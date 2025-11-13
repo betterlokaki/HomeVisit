@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  /**
+   * SiteCard Component
+   * 
+   * Displays a single site card with status badge, coordinates, timestamps,
+   * and a dropdown to change status. Emits events for selection and status changes.
+   * 
+   * Props:
+   * - site: The Site object to display
+   * - isSelected: Whether this site is currently selected
+   */
 
-  interface Site {
-    id: string;
-    name: string;
-    geometry: {
-      type: string;
-      coordinates: number[];
-    };
-    status: 'online' | 'offline' | 'maintenance';
-    last_seen: string;
-    last_data: string;
-  }
+  import { createEventDispatcher } from 'svelte';
+  import type { Site } from '../stores/sites';
 
   export let site: Site;
   export let isSelected: boolean = false;
 
   const dispatch = createEventDispatcher<{
-    select: void;
+    selectSite: void;
     statusChange: string;
   }>();
 
@@ -43,7 +43,7 @@
   };
 </script>
 
-<div class="site-card" class:selected={isSelected} on:click={() => dispatch('select')}>
+<div class="site-card" class:selected={isSelected} on:click={() => dispatch('selectSite')}>
   <div class="card-header">
     <div class="site-name">{site.name}</div>
     <div class="status-badge" style="background-color: {statusColors[site.status]}">
@@ -52,7 +52,7 @@
   </div>
 
   <div class="card-content">
-    <div class="site-id">ID: <code>{site.id}</code></div>
+    <div class="site-id">Code: <code>{site.site_code}</code></div>
     <div class="site-coords">
       Coords: [{site.geometry.coordinates[0].toFixed(4)}, {site.geometry.coordinates[1].toFixed(4)}]
     </div>

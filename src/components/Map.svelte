@@ -1,26 +1,27 @@
 <script lang="ts">
+  /**
+   * Map Component
+   * 
+   * Displays an interactive MapLibre GL map showing all sites as markers.
+   * Markers are color-coded by status and show popups on click.
+   * Automatically highlights the selected site and fits bounds to all sites on load.
+   * 
+   * Props:
+   * - sites: Array of Site objects to display
+   * - selectedSiteId: Currently selected site ID (null if none)
+   */
+
   import { onMount } from 'svelte';
   import maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
-
-  interface Site {
-    id: string;
-    name: string;
-    geometry: {
-      type: string;
-      coordinates: number[];
-    };
-    status: 'online' | 'offline' | 'maintenance';
-    last_seen: string;
-    last_data: string;
-  }
+  import type { Site } from '../stores/sites';
 
   export let sites: Site[] = [];
-  export let selectedSiteId: string | null = null;
+  export let selectedSiteId: number | null = null;
 
   let mapContainer: HTMLDivElement;
   let map: maplibregl.Map | null = null;
-  let markers: Map<string, maplibregl.Marker> = new Map();
+  let markers: Map<number, maplibregl.Marker> = new Map();
 
   onMount(() => {
     // Initialize map centered on first site or default
@@ -77,18 +78,18 @@
         new maplibregl.Popup({ offset: 25 }).setHTML(
           `<div style="font-weight: 600; margin-bottom: 0.5rem;">${site.name}</div>
            <div style="font-size: 0.875rem; color: #6b7280;">
-             <strong>Status:</strong> ${site.status}<br>
-             <strong>ID:</strong> ${site.id}
+             <strong>Code:</strong> ${site.site_code}<br>
+             <strong>Status:</strong> ${site.status}
            </div>`
         )
       )
       .addTo(map);
 
-    markers.set(site.id, marker);
+    markers.set(site.site_id, marker);
 
     // Click to select
     el.addEventListener('click', () => {
-      selectedSiteId = site.id;
+      selectedSiteId = site.site_id;
       marker.togglePopup();
     });
   };
