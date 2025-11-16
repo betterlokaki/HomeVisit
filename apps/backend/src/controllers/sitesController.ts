@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from "express";
+import { GetUserSitesResponse, EnrichedSite } from "@homevisit/common/src";
 import { postgrestService } from "../services/postgrestService.js";
 import { calculateStatus, generateSiteLink } from "../utils/siteEnricher.js";
 import { logger } from "../middleware/logger.js";

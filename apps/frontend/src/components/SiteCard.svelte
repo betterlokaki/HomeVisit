@@ -1,183 +1,129 @@
 <script lang="ts">
   /**
    * SiteCard Component
-   * 
-   * Displays a single site card with status badge, coordinates, timestamps,
-   * and a dropdown to change status. Emits events for selection and status changes.
-   * 
-   * Props:
-   * - site: The Site object to display
-   * - isSelected: Whether this site is currently selected
+   *
+   * Displays a single enriched site card with:
+   * - Site name and current status badge
+   * - Updated status label (Full, Partial, No)
+   * - Clickable site link button
+   * - Coordinates and timestamps
    */
 
-  import { createEventDispatcher } from 'svelte';
-  import type { Site } from '../stores/sites';
+  import { createEventDispatcher } from "svelte";
+  import type { EnrichedSite } from "@homevisit/common/src";
 
-  export let site: Site;
+  export let site: EnrichedSite;
   export let isSelected: boolean = false;
 
   const dispatch = createEventDispatcher<{
     selectSite: void;
-    statusChange: string;
   }>();
 
   const statusColors: Record<string, string> = {
-    online: '#10b981',
-    offline: '#ef4444',
-    maintenance: '#f59e0b'
+    online: "bg-green-100 text-green-800",
+    offline: "bg-red-100 text-red-800",
+    maintenance: "bg-amber-100 text-amber-800",
   };
 
-  const handleStatusChange = (e: Event) => {
-    const select = e.target as HTMLSelectElement;
-    dispatch('statusChange', select.value);
+  const updatedStatusColors: Record<string, string> = {
+    Full: "bg-emerald-100 text-emerald-800",
+    Partial: "bg-yellow-100 text-yellow-800",
+    No: "bg-red-100 text-red-800",
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 </script>
 
-<div class="site-card" class:selected={isSelected} on:click={() => dispatch('selectSite')}>
-  <div class="card-header">
-    <div class="site-name">{site.name}</div>
-    <div class="status-badge" style="background-color: {statusColors[site.status]}">
-      {site.status}
+<div
+  class="p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 {isSelected
+    ? 'border-blue-500 bg-blue-50 shadow-md'
+    : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'}"
+  on:click={() => dispatch("selectSite")}
+  role="button"
+  tabindex="0"
+  on:keydown={(e) => e.key === "Enter" && dispatch("selectSite")}
+>
+  <!-- Header: Name and Status Badges -->
+  <div class="flex justify-between items-start gap-3 mb-3">
+    <div class="flex-1">
+      <h3 class="text-lg font-semibold text-gray-900">{site.name}</h3>
+      <p class="text-sm text-gray-600 font-mono">{site.site_code}</p>
+    </div>
+    <div class="flex gap-2 flex-wrap justify-end">
+      <span
+        class="px-3 py-1 rounded-full text-xs font-medium {statusColors[
+          site.status
+        ] || statusColors.offline}"
+      >
+        {site.status}
+      </span>
     </div>
   </div>
 
-  <div class="card-content">
-    <div class="site-id">Code: <code>{site.site_code}</code></div>
-    <div class="site-coords">
-      Coords: [{site.geometry.coordinates[0].toFixed(4)}, {site.geometry.coordinates[1].toFixed(4)}]
+  <!-- Updated Status Label -->
+  <div class="mb-3 flex items-center gap-2">
+    <span class="text-sm font-medium text-gray-700">Updated Status:</span>
+    <span
+      class="px-2.5 py-1 rounded-full text-xs font-semibold {updatedStatusColors[
+        site.updatedStatus
+      ] || updatedStatusColors.No}"
+    >
+      {site.updatedStatus}
+    </span>
+  </div>
+
+  <!-- Site Content -->
+  <div class="mb-3 text-sm text-gray-600 space-y-1.5">
+    <div>
+      <span class="font-medium">Coordinates:</span>
+      <code class="ml-1 bg-gray-100 px-2 py-0.5 rounded text-gray-800">
+        [{site.geometry.coordinates[0].toFixed(4)}, {site.geometry.coordinates[1].toFixed(
+          4
+        )}]
+      </code>
     </div>
-    <div class="site-time">
-      <div>Last Seen: <span>{formatDate(site.last_seen)}</span></div>
-      <div>Last Data: <span>{formatDate(site.last_data)}</span></div>
+    <div class="grid grid-cols-2 gap-2">
+      <div>
+        <span class="font-medium">Last Seen:</span>
+        <p class="text-xs text-gray-500">{formatDate(site.last_seen)}</p>
+      </div>
+      <div>
+        <span class="font-medium">Last Data:</span>
+        <p class="text-xs text-gray-500">{formatDate(site.last_data)}</p>
+      </div>
     </div>
   </div>
 
-  <div class="card-actions">
-    <select on:change={handleStatusChange} value={site.status}>
-      <option value="online">Online</option>
-      <option value="offline">Offline</option>
-      <option value="maintenance">Maintenance</option>
-    </select>
+  <!-- Site Link Button -->
+  <div class="border-t border-gray-200 pt-3">
+    <a
+      href={site.siteLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center justify-center w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+    >
+      <svg
+        class="w-4 h-4 mr-2"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+        />
+      </svg>
+      Visit Site
+    </a>
   </div>
 </div>
-
-<style>
-  .site-card {
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .site-card:hover {
-    border-color: #667eea;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
-  }
-
-  .site-card.selected {
-    border-color: #667eea;
-    background: #f0f4ff;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-  }
-
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-    gap: 1rem;
-  }
-
-  .site-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #1f2937;
-    flex: 1;
-  }
-
-  .status-badge {
-    padding: 0.375rem 0.75rem;
-    border-radius: 0.25rem;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  .card-content {
-    margin-bottom: 0.75rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
-
-  .site-id {
-    margin-bottom: 0.5rem;
-  }
-
-  code {
-    background: #f3f4f6;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-family: 'Courier New', monospace;
-    color: #374151;
-    font-size: 0.85em;
-  }
-
-  .site-coords {
-    margin-bottom: 0.5rem;
-    font-family: 'Courier New', monospace;
-  }
-
-  .site-time {
-    font-size: 0.8rem;
-    color: #9ca3af;
-  }
-
-  .site-time div {
-    margin-bottom: 0.25rem;
-  }
-
-  .site-time span {
-    display: inline-block;
-    margin-left: 0.25rem;
-  }
-
-  .card-actions {
-    border-top: 1px solid #e5e7eb;
-    padding-top: 0.75rem;
-  }
-
-  select {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    background-color: white;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-
-  select:hover {
-    border-color: #667eea;
-  }
-
-  select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-</style>

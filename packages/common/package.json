@@ -1,0 +1,14 @@
+{
+  "name": "@homevisit/common",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/geojson": "^7946.0.14"
+  }
+}
