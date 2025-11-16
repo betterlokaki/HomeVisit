@@ -10,6 +10,13 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ============================================================================
+-- DROP OLD TABLES (for schema migration)
+-- ============================================================================
+
+/** Drop old user_sites many-to-many table if it exists */
+DROP TABLE IF EXISTS user_sites CASCADE;
+
+-- ============================================================================
 -- ENUMS
 -- ============================================================================
 
@@ -28,29 +35,34 @@ END $$;
  * users table - User profile data
  * 
  * Stores user information. Simple username-based access (no passwords).
+ * Each user belongs to a group via group_id, determining which sites they can access.
  */
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGSERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(255),
+  group_id BIGINT NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Index on username for fast lookups
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+-- Index on group_id for efficient site queries
+CREATE INDEX IF NOT EXISTS idx_users_group_id ON users(group_id);
 
 /**
  * sites table - Geographic location data with PostGIS geometry
  * 
  * Stores site information including geographic coordinates (via PostGIS geometry),
- * status, and timestamps for monitoring.
+ * status, and timestamps for monitoring. Each site belongs to a group via group_id.
  */
 CREATE TABLE IF NOT EXISTS sites (
   site_id BIGSERIAL PRIMARY KEY,
   site_code VARCHAR(50) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
   geometry geometry(Point, 4326) NOT NULL,
+  group_id BIGINT NOT NULL DEFAULT 1,
   status site_status DEFAULT 'offline',
   last_seen TIMESTAMPTZ DEFAULT now(),
   last_data TIMESTAMPTZ DEFAULT now(),
@@ -61,47 +73,26 @@ CREATE TABLE IF NOT EXISTS sites (
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_sites_site_code ON sites(site_code);
 CREATE INDEX IF NOT EXISTS idx_sites_status ON sites(status);
+CREATE INDEX IF NOT EXISTS idx_sites_group_id ON sites(group_id);
 CREATE INDEX IF NOT EXISTS idx_sites_geometry ON sites USING GIST(geometry);
-
-/**
- * user_sites table - Many-to-many relationship between users and sites
- * 
- * Links users to the sites they can access/manage.
- */
-CREATE TABLE IF NOT EXISTS user_sites (
-  user_site_id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  site_id BIGINT NOT NULL REFERENCES sites(site_id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, site_id)
-);
-
--- Index for efficient queries of sites by user
-CREATE INDEX IF NOT EXISTS idx_user_sites_user_id ON user_sites(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_sites_site_id ON user_sites(site_id);
 
 -- ============================================================================
 -- SAMPLE DATA
 -- ============================================================================
 
-/** Insert sample sites */
-INSERT INTO sites (site_code, name, geometry, status, last_seen, last_data)
+/** Insert sample sites - both assigned to group_id 1 */
+INSERT INTO sites (site_code, name, geometry, group_id, status, last_seen, last_data)
 VALUES
-  ('NYC', 'New York', ST_SetSRID(ST_GeomFromText('POINT(-74.0060 40.7128)'), 4326), 'online', now(), now()),
-  ('EGYPT', 'Egypt', ST_SetSRID(ST_GeomFromText('POINT(31.2357 30.0444)'), 4326), 'online', now(), now())
+  ('NYC', 'New York', ST_SetSRID(ST_GeomFromText('POINT(-74.0060 40.7128)'), 4326), 1, 'online', now(), now()),
+  ('EGYPT', 'Egypt', ST_SetSRID(ST_GeomFromText('POINT(31.2357 30.0444)'), 4326), 1, 'online', now(), now())
 ON CONFLICT (site_code) DO NOTHING;
 
-/** Insert sample users */
-INSERT INTO users (username, email)
+/** Insert sample users - both assigned to group_id 1 */
+INSERT INTO users (username, email, group_id)
 VALUES 
-  ('demo', 'demo@example.com'),
-  ('shahar', 'shahar@example.com')
+  ('demo', 'demo@example.com', 1),
+  ('shahar', 'shahar@example.com', 1)
 ON CONFLICT (username) DO NOTHING;
-
-/** Link sample users to sites */
-INSERT INTO user_sites (user_id, site_id)
-SELECT u.user_id, s.site_id FROM users u, sites s WHERE u.username IN ('demo', 'shahar') AND s.site_code IN ('NYC', 'EGYPT')
-ON CONFLICT (user_id, site_id) DO NOTHING;
 
 -- ============================================================================
 -- ROLES AND PERMISSIONS
@@ -116,7 +107,7 @@ END $$;
 
 /** Grant basic permissions to anon role */
 GRANT USAGE ON SCHEMA public TO anon;
-GRANT SELECT ON users, sites, user_sites TO anon;
+GRANT SELECT ON users, sites TO anon;
 GRANT UPDATE ON sites TO anon;
 
 -- ============================================================================
@@ -161,9 +152,11 @@ GRANT EXECUTE ON FUNCTION public.get_or_create_user(TEXT) TO anon;
 /**
  * get_user_sites - Retrieve all sites for a given user
  * 
+ * Based on the user's group_id, returns all sites in the same group.
+ * 
  * @param p_user_id - ID of the user
  * 
- * @returns Set of site records belonging to the user
+ * @returns Set of site records belonging to the user's group
  */
 CREATE OR REPLACE FUNCTION public.get_user_sites(p_user_id BIGINT)
 RETURNS TABLE (
@@ -179,8 +172,7 @@ RETURNS TABLE (
 ) LANGUAGE sql STABLE AS $$
   SELECT s.site_id, s.site_code, s.name, s.geometry, s.status, s.last_seen, s.last_data, s.created_at, s.updated_at
   FROM sites s
-  INNER JOIN user_sites us ON s.site_id = us.site_id
-  WHERE us.user_id = p_user_id
+  WHERE s.group_id = (SELECT group_id FROM users WHERE user_id = p_user_id)
   ORDER BY s.name;
 $$;
 
