@@ -3,7 +3,7 @@
  */
 
 import { Router } from "express";
-import { getUserSites } from "../controllers/sitesController.js";
+import { getUserSites } from "../controllers/sitesController";
 
 const router = Router();
 

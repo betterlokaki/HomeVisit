@@ -3,26 +3,31 @@
    * SiteCard Component
    *
    * Displays a single enriched site card with:
-   * - Site name and current status badge
-   * - Updated status label (Full, Partial, No)
+   * - Site name and editable status dropdown
+   * - Updated status label (Full, Partial, No) - read-only
    * - Clickable site link button
    * - Coordinates and timestamps
    */
 
   import { createEventDispatcher } from "svelte";
-  import type { EnrichedSite } from "@homevisit/common/src";
+  import type { EnrichedSite, SiteStatus } from "@homevisit/common/src";
 
   export let site: EnrichedSite;
   export let isSelected: boolean = false;
 
+  let selectedStatus: SiteStatus = site.status;
+
   const dispatch = createEventDispatcher<{
     selectSite: void;
+    statusChanged: { siteId: number; newStatus: SiteStatus };
   }>();
 
-  const statusColors: Record<string, string> = {
-    online: "bg-green-100 text-green-800",
-    offline: "bg-red-100 text-red-800",
-    maintenance: "bg-amber-100 text-amber-800",
+  const statusOptions: SiteStatus[] = ["online", "offline", "maintenance"];
+
+  const statusColors: Record<SiteStatus, string> = {
+    online: "bg-green-100 text-green-800 border-green-300",
+    offline: "bg-red-100 text-red-800 border-red-300",
+    maintenance: "bg-amber-100 text-amber-800 border-amber-300",
   };
 
   const updatedStatusColors: Record<string, string> = {
@@ -40,6 +45,16 @@
       minute: "2-digit",
     });
   };
+
+  const handleStatusChange = (newStatus: SiteStatus) => {
+    selectedStatus = newStatus;
+    dispatch("statusChanged", { siteId: site.site_id, newStatus });
+  };
+
+  const onStatusSelectChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    handleStatusChange(target.value as SiteStatus);
+  };
 </script>
 
 <div
@@ -51,24 +66,33 @@
   tabindex="0"
   on:keydown={(e) => e.key === "Enter" && dispatch("selectSite")}
 >
-  <!-- Header: Name and Status Badges -->
+  <!-- Header: Name and Status Dropdown -->
   <div class="flex justify-between items-start gap-3 mb-3">
     <div class="flex-1">
       <h3 class="text-lg font-semibold text-gray-900">{site.name}</h3>
       <p class="text-sm text-gray-600 font-mono">{site.site_code}</p>
     </div>
     <div class="flex gap-2 flex-wrap justify-end">
-      <span
-        class="px-3 py-1 rounded-full text-xs font-medium {statusColors[
-          site.status
-        ] || statusColors.offline}"
+      <!-- Status Dropdown (Editable) -->
+      <select
+        value={selectedStatus}
+        on:change={onStatusSelectChange}
+        on:click|stopPropagation
+        on:keydown|stopPropagation
+        class="px-3 py-1 rounded-full text-xs font-medium border-2 cursor-pointer transition-colors {statusColors[
+          selectedStatus
+        ]}"
       >
-        {site.status}
-      </span>
+        {#each statusOptions as status}
+          <option value={status} class="bg-white text-gray-900">
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </option>
+        {/each}
+      </select>
     </div>
   </div>
 
-  <!-- Updated Status Label -->
+  <!-- Updated Status Label (Read-only) -->
   <div class="mb-3 flex items-center gap-2">
     <span class="text-sm font-medium text-gray-700">Updated Status:</span>
     <span

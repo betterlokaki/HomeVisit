@@ -5,7 +5,7 @@
  */
 
 import { writable, derived } from "svelte/store";
-import type { EnrichedSite } from "@homevisit/common/src";
+import type { EnrichedSite, SiteStatus } from "@homevisit/common/src";
 import { fetchUserSites } from "../services/sitesService";
 import { ERROR_LOAD_SITES } from "../config/constants";
 
@@ -42,6 +42,13 @@ function createSitesStore() {
     },
     selectSite: (siteId: number | null) =>
       update((s) => ({ ...s, selectedSiteId: siteId })),
+    updateSiteStatus: (siteId: number, newStatus: SiteStatus) =>
+      update((s) => ({
+        ...s,
+        sites: s.sites.map((site) =>
+          site.site_id === siteId ? { ...site, status: newStatus } : site
+        ),
+      })),
     clearError: () => update((s) => ({ ...s, error: null })),
     reset: () => set(initialState),
   };

@@ -6,14 +6,14 @@
 
 import { Request, Response } from "express";
 import type { GetUserSitesResponse, EnrichedSite } from "@homevisit/common/src";
-import { postgrestService } from "../services/postgrestService.js";
-import { calculateStatus, generateSiteLink } from "../utils/siteEnricher.js";
-import { logger } from "../middleware/logger.js";
+import { postgrestService } from "../services/postgrestService";
+import { calculateStatus, generateSiteLink } from "../utils/siteEnricher";
+import { logger } from "../middleware/logger";
 import {
   RESPONSE_SUCCESS_FIELD,
   RESPONSE_DATA_FIELD,
   ERROR_FIELD,
-} from "../config/constants.js";
+} from "../config/constants";
 
 /**
  * GET /userSites - Fetch and enrich sites for user
