@@ -1,28 +1,28 @@
 <script lang="ts">
   /**
    * Login Page
-   * 
-   * Allows users to authenticate with their username only.
-   * Provides a link to the registration page for new users.
+   *
+   * Allows users to authenticate with a group ID.
    */
 
-  import { createEventDispatcher } from 'svelte';
-  import { authStore } from '../stores/auth';
+  import { createEventDispatcher } from "svelte";
+  import { authStore } from "../stores/auth";
 
   const dispatch = createEventDispatcher();
 
-  let username = '';
+  let groupId = "1";
   let isLoading = false;
 
   async function handleLogin() {
-    if (!username.trim()) {
-      alert('Please enter your username');
+    const groupIdNum = parseInt(groupId, 10);
+    if (isNaN(groupIdNum) || groupIdNum <= 0) {
+      alert("Please enter a valid group ID (positive number)");
       return;
     }
 
     isLoading = true;
     try {
-      await authStore.login(username);
+      await authStore.login(groupIdNum);
       // Navigation happens via App.svelte reactivity
     } catch (err) {
       // Error is already in authStore.error
@@ -32,7 +32,7 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleLogin();
     }
   }
@@ -47,14 +47,15 @@
 
     <form on:submit|preventDefault={handleLogin}>
       <div class="form-group">
-        <label for="username">Username</label>
+        <label for="groupId">Group ID</label>
         <input
-          id="username"
-          type="text"
-          placeholder="Enter your username"
-          bind:value={username}
+          id="groupId"
+          type="number"
+          placeholder="Enter your group ID"
+          bind:value={groupId}
           disabled={isLoading}
           on:keydown={handleKeydown}
+          min="1"
         />
       </div>
 
@@ -64,21 +65,21 @@
         </div>
       {/if}
 
-      <button type="submit" disabled={isLoading || !username.trim()}>
-        {isLoading ? 'Logging in...' : 'Login'}
+      <button type="submit" disabled={isLoading || !groupId.trim()}>
+        {isLoading ? "Logging in..." : "Login"}
       </button>
     </form>
 
     <div class="footer">
       <p>
-        Don't have an account?
+        Need help?
         <button
           type="button"
           class="link-button"
-          on:click={() => dispatch('switchPage')}
+          on:click={() => dispatch("switchPage")}
           disabled={isLoading}
         >
-          Register here
+          Contact administrator
         </button>
       </p>
     </div>
@@ -160,7 +161,7 @@
     cursor: not-allowed;
   }
 
-  button[type='submit'] {
+  button[type="submit"] {
     width: 100%;
     padding: 0.75rem 1rem;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -173,12 +174,12 @@
     transition: all 0.2s;
   }
 
-  button[type='submit']:hover:not(:disabled) {
+  button[type="submit"]:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
   }
 
-  button[type='submit']:disabled {
+  button[type="submit"]:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }

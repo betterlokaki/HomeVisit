@@ -21,7 +21,7 @@ const envSchema = z.object({
   REQUEST_JSON_LIMIT: z.string().default("1mb"),
   POSTGREST_RPC_AUTH_ENDPOINT: z.string().default("/rpc/get_or_create_user"),
   POSTGREST_RPC_SITES_ENDPOINT: z.string().default("/rpc/get_user_sites"),
-  POSTGREST_AUTH_PARAM: z.string().default("p_username"),
+  POSTGREST_AUTH_PARAM: z.string().default("p_group_id"),
   POSTGREST_QUERY_PARAM: z.string().default("p_user_id"),
   SITE_STATUS_OPTIONS: z.string().default("Full,Partial,No"),
   STATUS_CALCULATION_DELAY_MS: z.coerce.number().default(1000),

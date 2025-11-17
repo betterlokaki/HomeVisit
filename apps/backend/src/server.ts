@@ -6,6 +6,7 @@
 
 import express from "express";
 import cors from "cors";
+import swaggerUi from "swagger-ui-express";
 import { config } from "./config/env.js";
 import { CORS_ORIGINS, REQUEST_JSON_LIMIT } from "./config/constants.js";
 import { logger } from "./middleware/logger.js";
@@ -13,6 +14,8 @@ import sitesRoutes from "./routes/sitesRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import { setupErrorHandlers } from "./middleware/errorHandlers.js";
 import { setupHealthCheck } from "./routes/health.js";
+import { statusRefreshScheduler } from "./services/statusRefreshScheduler.js";
+import { swaggerSpec } from "./swagger.js";
 
 const app = express();
 
@@ -24,6 +27,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Swagger UI
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Routes
 setupHealthCheck(app);
 app.use("/auth", authRoutes);
@@ -34,12 +40,21 @@ setupErrorHandlers(app);
 
 // Start server
 const PORT = config.PORT;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`🚀 Backend server started`, {
     port: PORT,
     environment: config.NODE_ENV,
     postgrestUrl: config.POSTGREST_URL,
   });
+
+  // Initialize status refresh scheduler
+  try {
+    await statusRefreshScheduler.start();
+    logger.info("✅ Status refresh scheduler started successfully");
+  } catch (error) {
+    logger.error("⚠️ Failed to start status refresh scheduler", error);
+    // Don't exit the process, the scheduler is not critical
+  }
 });
 
 export default app;

@@ -3,16 +3,17 @@
  */
 
 import { Router } from "express";
-import { getUserSites } from "../controllers/sitesController";
+import { getSitesByGroup } from "../controllers/sitesController";
 
 const router = Router();
-
 /**
- * GET /sites/userSites
- * Get all sites for a user with enriched data (updatedStatus, siteLink)
+ * GET /sites
+ * Get sites by group with optional filters
  * Query params:
- *   - user_id: number (required)
+ *   - group: string (required) - group name
+ *   - username: string (optional) - filter by username
+ *   - status: string (optional) - filter by status (Seen, Partial, Not Seen)
  */
-router.get("/userSites", getUserSites);
+router.get("/", getSitesByGroup);
 
 export default router;

@@ -15,7 +15,7 @@ import {
 export interface AuthState {
   isAuthenticated: boolean;
   userId: number | null;
-  username: string | null;
+  groupId: number | null;
   error: string | null;
   loading: boolean;
 }
@@ -23,7 +23,7 @@ export interface AuthState {
 const initialState: AuthState = {
   isAuthenticated: false,
   userId: null,
-  username: null,
+  groupId: null,
   error: null,
   loading: false,
 };
@@ -45,14 +45,14 @@ function createAuthStore() {
 
   return {
     subscribe,
-    login: async (username: string) => {
+    login: async (groupId: number = 1) => {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
-        const userId = await authenticateUser(username);
+        const userId = await authenticateUser(groupId);
         const newState = {
           isAuthenticated: true,
           userId,
-          username,
+          groupId,
           error: null,
           loading: false,
         };
@@ -80,5 +80,5 @@ export const isAuthenticated = derived(
 );
 export const currentUser = derived(authStore, ($auth) => ({
   id: $auth.userId,
-  username: $auth.username,
+  groupId: $auth.groupId,
 }));

@@ -10,9 +10,9 @@ import { API_BASE_URL, BACKEND_AUTH_ENDPOINT } from "../config/constants";
 /**
  * Authenticate user via backend
  */
-export async function authenticateUser(username: string): Promise<number> {
+export async function authenticateUser(groupId: number = 1): Promise<number> {
   const response = await axios.post(`${API_BASE_URL}${BACKEND_AUTH_ENDPOINT}`, {
-    username,
+    group_id: groupId,
   });
   return response.data.data.user_id;
 }

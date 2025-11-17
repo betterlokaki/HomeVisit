@@ -1,30 +1,26 @@
 <script lang="ts">
   /**
    * Register Page
-   * 
-   * Allows new users to create an account with just a username.
+   *
+   * Allows users to create a user record by specifying a group ID.
    * Provides validation and error handling. Links back to login page.
    */
 
-  import { createEventDispatcher } from 'svelte';
-  import { authStore } from '../stores/auth';
+  import { createEventDispatcher } from "svelte";
+  import { authStore } from "../stores/auth";
 
   const dispatch = createEventDispatcher();
 
-  let username = '';
+  let groupId = "1";
   let isLoading = false;
-  let validationError = '';
+  let validationError = "";
 
   function validateForm(): boolean {
-    validationError = '';
+    validationError = "";
 
-    if (!username.trim()) {
-      validationError = 'Username is required';
-      return false;
-    }
-
-    if (username.length < 3) {
-      validationError = 'Username must be at least 3 characters';
+    const groupIdNum = parseInt(groupId, 10);
+    if (isNaN(groupIdNum) || groupIdNum <= 0) {
+      validationError = "Group ID must be a positive number";
       return false;
     }
 
@@ -38,7 +34,8 @@
 
     isLoading = true;
     try {
-      await authStore.login(username);
+      const groupIdNum = parseInt(groupId, 10);
+      await authStore.login(groupIdNum);
       // Navigation happens via App.svelte reactivity
     } catch (err) {
       // Error is already in authStore.error
@@ -48,7 +45,7 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleRegister();
     }
   }
@@ -58,19 +55,20 @@
   <div class="register-card">
     <div class="header">
       <h1>HomeVisit</h1>
-      <p>Create Your Account</p>
+      <p>Create User Account</p>
     </div>
 
     <form on:submit|preventDefault={handleRegister}>
       <div class="form-group">
-        <label for="username">Username</label>
+        <label for="groupId">Group ID</label>
         <input
-          id="username"
-          type="text"
-          placeholder="Choose a username (min 3 characters)"
-          bind:value={username}
+          id="groupId"
+          type="number"
+          placeholder="Enter your group ID"
+          bind:value={groupId}
           disabled={isLoading}
           on:keydown={handleKeydown}
+          min="1"
         />
       </div>
 
@@ -86,21 +84,18 @@
         </div>
       {/if}
 
-      <button
-        type="submit"
-        disabled={isLoading || !username.trim()}
-      >
-        {isLoading ? 'Creating Account...' : 'Register'}
+      <button type="submit" disabled={isLoading || !groupId.trim()}>
+        {isLoading ? "Creating Account..." : "Create Account"}
       </button>
     </form>
 
     <div class="footer">
       <p>
-        Already have an account?
+        Back to login?
         <button
           type="button"
           class="link-button"
-          on:click={() => dispatch('switchPage')}
+          on:click={() => dispatch("switchPage")}
           disabled={isLoading}
         >
           Login here
@@ -185,7 +180,7 @@
     cursor: not-allowed;
   }
 
-  button[type='submit'] {
+  button[type="submit"] {
     width: 100%;
     padding: 0.75rem 1rem;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -198,12 +193,12 @@
     transition: all 0.2s;
   }
 
-  button[type='submit']:hover:not(:disabled) {
+  button[type="submit"]:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
   }
 
-  button[type='submit']:disabled {
+  button[type="submit"]:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }

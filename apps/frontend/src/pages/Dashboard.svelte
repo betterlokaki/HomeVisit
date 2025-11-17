@@ -22,7 +22,7 @@
     try {
       sitesStore.updateSiteStatus(
         siteId,
-        newStatus as "online" | "offline" | "maintenance"
+        newStatus as "Seen" | "Partial" | "Not Seen"
       );
     } catch (err) {
       console.error("Failed to update site status", err);
@@ -34,9 +34,10 @@
   <header class="dashboard-header">
     <div class="header-content">
       <h1>HomeVisit</h1>
-      {#if $currentUser.username}
+      {#if $currentUser.id}
         <p class="user-info">
-          Welcome, <strong>{$currentUser.username}</strong>
+          User ID: <strong>{$currentUser.id}</strong> | Group:
+          <strong>{$currentUser.groupId}</strong>
         </p>
       {/if}
     </div>

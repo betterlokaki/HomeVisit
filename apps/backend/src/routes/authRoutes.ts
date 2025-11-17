@@ -9,9 +9,9 @@ const router = Router();
 
 /**
  * POST /auth/login
- * Authenticate user via username and get or create user ID
+ * Authenticate user and create user record
  * Body:
- *   - username: string (required)
+ *   - group_id: number (optional, defaults to 1)
  */
 router.post("/login", loginUser);
 

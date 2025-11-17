@@ -10,28 +10,28 @@ import { logger } from "../middleware/logger";
 import { ERROR_FIELD } from "../config/constants";
 
 /**
- * POST /auth/login - Authenticate user via username
+ * POST /auth/login - Authenticate user and get user_id
  * Body:
- *   - username: string (required)
+ *   - group_id: number (optional, defaults to 1)
  */
 export async function loginUser(req: Request, res: Response): Promise<void> {
   try {
-    const { username } = req.body;
+    const { group_id = 1 } = req.body;
 
-    if (!username || typeof username !== "string") {
+    if (typeof group_id !== "number" || group_id <= 0) {
       res
         .status(400)
-        .json({ [ERROR_FIELD]: "Missing required field: username" });
+        .json({ [ERROR_FIELD]: "Invalid group_id: must be a positive number" });
       return;
     }
 
-    logger.info("POST /auth/login called", { username });
+    logger.info("POST /auth/login called", { group_id });
 
-    const userId = await postgrestService.getOrCreateUser(username);
+    const userId = await postgrestService.getOrCreateUser(group_id);
 
     res.status(200).json({
       success: true,
-      data: { user_id: userId },
+      data: { user_id: userId, group_id },
     });
   } catch (error) {
     logger.error("Authentication failed", { error });
