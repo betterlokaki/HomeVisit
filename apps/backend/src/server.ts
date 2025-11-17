@@ -10,6 +10,7 @@ import { config } from "./config/env.js";
 import { CORS_ORIGINS, REQUEST_JSON_LIMIT } from "./config/constants.js";
 import { logger } from "./middleware/logger.js";
 import sitesRoutes from "./routes/sitesRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import { setupErrorHandlers } from "./middleware/errorHandlers.js";
 import { setupHealthCheck } from "./routes/health.js";
 
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 
 // Routes
 setupHealthCheck(app);
+app.use("/auth", authRoutes);
 app.use("/sites", sitesRoutes);
 
 // Error handlers

@@ -1,52 +1,24 @@
 /**
- * Frontend Configuration with Validation
+ * Frontend Configuration
  *
- * Loads and validates environment variables using Zod.
- * All URLs come from .env files, never hardcoded.
+ * Loads environment variables from .env files.
+ * All URLs come from .env, never hardcoded.
  */
-
-import { z } from "zod";
-
-const frontendEnvSchema = z.object({
-  VITE_BACKEND_URL: z.string().url().default("http://localhost:4000"),
-  VITE_POSTGREST_URL: z.string().url().default("http://localhost:3000"),
-  VITE_API_TIMEOUT: z.coerce.number().default(5000),
-});
-
-type FrontendEnvConfig = z.infer<typeof frontendEnvSchema>;
-
-function validateFrontendEnv(): FrontendEnvConfig {
-  try {
-    return frontendEnvSchema.parse(import.meta.env);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error("❌ Frontend environment validation failed:");
-      error.issues.forEach((issue) => {
-        console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
-      });
-    }
-    throw new Error("Invalid frontend environment configuration");
-  }
-}
-
-const env = validateFrontendEnv();
 
 // ============================================================================
 // API Endpoints (from Environment)
 // ============================================================================
-export const API_BASE_URL = env.VITE_BACKEND_URL;
-export const POSTGREST_BASE_URL = env.VITE_POSTGREST_URL;
-export const API_TIMEOUT = env.VITE_API_TIMEOUT;
-
-// ============================================================================
-// PostgREST Endpoints
-// ============================================================================
-export const POSTGREST_RPC_AUTH_ENDPOINT = "/rpc/get_or_create_user";
-export const POSTGREST_AUTH_PARAM = "p_username";
+export const API_BASE_URL =
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+export const API_TIMEOUT = parseInt(
+  import.meta.env.VITE_API_TIMEOUT || "5000",
+  10
+);
 
 // ============================================================================
 // Backend Endpoints
 // ============================================================================
+export const BACKEND_AUTH_ENDPOINT = "/auth/login";
 export const BACKEND_SITES_ENDPOINT = "/sites/userSites";
 
 // ============================================================================
