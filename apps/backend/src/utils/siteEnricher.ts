@@ -1,32 +1,33 @@
 /**
- * Utility functions for site data enrichment
+ * Site Data Enrichment Utilities
+ *
+ * Adds calculated fields to site data.
  */
 
-const STATUS_OPTIONS = ["Full", "Partial", "No"] as const;
-type StatusOption = (typeof STATUS_OPTIONS)[number];
+import {
+  SITE_STATUS_OPTIONS,
+  STATUS_CALCULATION_DELAY_MS,
+  SITE_LINK_DOMAIN,
+} from "../config/constants.js";
+import type { UpdatedStatus } from "@homevisit/common";
 
 /**
- * Simulate calculating status with async operation
- * In real world, this might call an external API or perform complex calculations
- *
- * @returns Promise<StatusOption> - One of: Full, Partial, No
+ * Calculate site status (simulated async operation)
  */
-export async function calculateStatus(): Promise<StatusOption> {
-  // Simulate async operation (e.g., calling an external service)
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  // Randomly select a status from the closed list
-  const randomIndex = Math.floor(Math.random() * STATUS_OPTIONS.length);
-  return STATUS_OPTIONS[randomIndex];
+export async function calculateStatus(): Promise<UpdatedStatus> {
+  await new Promise((resolve) =>
+    setTimeout(resolve, STATUS_CALCULATION_DELAY_MS)
+  );
+  const randomIndex = Math.floor(Math.random() * SITE_STATUS_OPTIONS.length);
+  const status = SITE_STATUS_OPTIONS[randomIndex];
+  return (status || "No") as UpdatedStatus;
 }
 
 /**
- * Generate a random site link/URL
- *
- * @returns string - A randomly generated site link
+ * Generate random site link URL
  */
 export function generateSiteLink(): string {
   const randomId = Math.random().toString(36).substring(2, 10);
   const randomToken = Math.random().toString(36).substring(2, 15);
-  return `https://site-${randomId}-${randomToken}.homevisit.local`;
+  return `https://site-${randomId}-${randomToken}.${SITE_LINK_DOMAIN}`;
 }
