@@ -1,15 +1,13 @@
 /**
  * Sites Store
  *
- * Manages site data and operations for the current authenticated user.
- * Fetches enriched sites from the backend instead of PostgREST directly.
+ * Manages site data and selected site state.
  */
 
 import { writable, derived } from "svelte/store";
-import axios from "axios";
-import type { EnrichedSite } from "@homevisit/common//src";
-
-const BACKEND_URL = "http://localhost:4000";
+import type { EnrichedSite, SeenStatus } from "@homevisit/common/src";
+import { fetchUserSites } from "../services/sitesService";
+import { ERROR_LOAD_SITES } from "../config/constants";
 
 export interface SitesState {
   sites: EnrichedSite[];
@@ -25,77 +23,43 @@ const initialState: SitesState = {
   error: null,
 };
 
-/**
- * Create the sites store
- */
 function createSitesStore() {
   const { subscribe, set, update } = writable<SitesState>(initialState);
 
   return {
     subscribe,
-
-    /**
-     * Fetch all sites for a given user from the backend
-     * @param userId - The user's ID
-     */
     fetchUserSites: async (userId: number) => {
       update((s) => ({ ...s, loading: true, error: null }));
       try {
-        const response = await axios.get(`${BACKEND_URL}/sites/userSites`, {
-          params: { user_id: userId },
-        });
-
-        update((s) => ({
-          ...s,
-          sites: response.data.data.sites,
-          loading: false,
-        }));
-        return response.data.data.sites;
+        const sites = await fetchUserSites(userId);
+        update((s) => ({ ...s, sites, loading: false }));
+        return sites;
       } catch (err: any) {
-        const errorMsg =
-          err.response?.data?.message || err.message || "Failed to load sites";
+        const errorMsg = err.response?.data?.message || ERROR_LOAD_SITES;
         update((s) => ({ ...s, loading: false, error: errorMsg }));
         throw err;
       }
     },
-
-    /**
-     * Select a site
-     * @param siteId - The site to select, or null to deselect
-     */
-    selectSite: (siteId: number | null) => {
-      update((s) => ({ ...s, selectedSiteId: siteId }));
-    },
-
-    /**
-     * Clear error message
-     */
-    clearError: () => {
-      update((s) => ({ ...s, error: null }));
-    },
-
-    /**
-     * Reset sites to initial state
-     */
-    reset: () => {
-      set(initialState);
-    },
+    selectSite: (siteId: number | null) =>
+      update((s) => ({ ...s, selectedSiteId: siteId })),
+    updateSiteStatus: (siteId: number, newStatus: SeenStatus) =>
+      update((s) => ({
+        ...s,
+        sites: s.sites.map((site) =>
+          site.site_id === siteId ? { ...site, seen_status: newStatus } : site
+        ),
+      })),
+    clearError: () => update((s) => ({ ...s, error: null })),
+    reset: () => set(initialState),
   };
 }
 
 export const sitesStore = createSitesStore();
-
-/**
- * Derived store to get the currently selected site
- */
-export const selectedSite = derived(sitesStore, ($sites) => {
-  if (!$sites.selectedSiteId) return null;
-  return $sites.sites.find((s) => s.site_id === $sites.selectedSiteId) || null;
-});
-
-/**
- * Derived store to get all sites as a map for quick lookup
- */
+export const selectedSite = derived(sitesStore, ($sites) =>
+  $sites.selectedSiteId
+    ? $sites.sites.find((s) => s.site_id === $sites.selectedSiteId) || null
+    : null
+);
 export const sitesMap = derived(sitesStore, ($sites) => {
   const map = new Map<number, EnrichedSite>();
   $sites.sites.forEach((site) => map.set(site.site_id, site));

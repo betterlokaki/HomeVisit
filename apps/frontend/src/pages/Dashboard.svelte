@@ -1,26 +1,31 @@
 <script lang="ts">
   /**
    * Dashboard Page
-   * 
+   *
    * Main application view showing sites list and map.
    * Allows authenticated users to view and manage their sites.
    */
 
-  import { currentUser, authStore } from '../stores/auth';
-  import { sitesStore, selectedSite } from '../stores/sites';
-  import SiteList from '../components/SiteList.svelte';
-  import Map from '../components/Map.svelte';
+  import { currentUser, authStore } from "../stores/auth";
+  import { sitesStore, selectedSite } from "../stores/sites";
+  import SiteList from "../components/SiteList.svelte";
+  import Map from "../components/Map.svelte";
 
   function handleLogout() {
     authStore.logout();
   }
 
-  async function handleStatusUpdate(event: CustomEvent<{ siteId: number; status: string }>) {
-    const { siteId, status } = event.detail;
+  async function handleStatusUpdate(
+    event: CustomEvent<{ siteId: number; newStatus: string }>
+  ) {
+    const { siteId, newStatus } = event.detail;
     try {
-      await sitesStore.updateSiteStatus(siteId, status as 'online' | 'offline' | 'maintenance');
+      sitesStore.updateSiteStatus(
+        siteId,
+        newStatus as "Seen" | "Partial" | "Not Seen"
+      );
     } catch (err) {
-      console.error('Failed to update site status', err);
+      console.error("Failed to update site status", err);
     }
   }
 </script>
@@ -29,13 +34,25 @@
   <header class="dashboard-header">
     <div class="header-content">
       <h1>HomeVisit</h1>
-      {#if $currentUser.username}
-        <p class="user-info">Welcome, <strong>{$currentUser.username}</strong></p>
+      {#if $currentUser.id}
+        <p class="user-info">
+          User ID: <strong>{$currentUser.id}</strong> | Group:
+          <strong>{$currentUser.groupId}</strong>
+        </p>
       {/if}
     </div>
     <button class="logout-btn" on:click={handleLogout} title="Logout">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M16 17l5-5m0 0l-5-5m5 5H9" />
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          d="M10 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M16 17l5-5m0 0l-5-5m5 5H9"
+        />
       </svg>
       Logout
     </button>
@@ -64,11 +81,14 @@
             sites={$sitesStore.sites}
             selectedSiteId={$sitesStore.selectedSiteId}
             on:selectSite={(e) => sitesStore.selectSite(e.detail)}
-            on:statusChange={handleStatusUpdate}
+            on:statusChanged={handleStatusUpdate}
           />
         </aside>
         <section class="map-container">
-          <Map sites={$sitesStore.sites} selectedSiteId={$sitesStore.selectedSiteId} />
+          <Map
+            sites={$sitesStore.sites}
+            selectedSiteId={$sitesStore.selectedSiteId}
+          />
         </section>
       </div>
     {/if}

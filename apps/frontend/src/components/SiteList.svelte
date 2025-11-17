@@ -1,27 +1,26 @@
 <script lang="ts">
   /**
    * SiteList Component
-   * 
+   *
    * Displays a scrollable list of sites with status badges and quick actions.
    * Emits events for site selection and status changes.
-   * 
+   *
    * Props:
    * - sites: Array of Site objects to display
    * - selectedSiteId: Current selected site ID (null if none selected)
    */
 
-  import { createEventDispatcher } from 'svelte';
-  import type { Site } from '../stores/sites';
-  import SiteCard from './SiteCard.svelte';
+  import { createEventDispatcher } from "svelte";
+  import type { EnrichedSite } from "@homevisit/common/src";
+  import SiteCard from "./SiteCard.svelte";
 
-  export let sites: Site[] = [];
+  export let sites: EnrichedSite[] = [];
   export let selectedSiteId: number | null = null;
 
   const dispatch = createEventDispatcher<{
     selectSite: number;
-    statusChange: { siteId: number; status: string };
+    statusChanged: { siteId: number; newStatus: string };
   }>();
-
 </script>
 
 <div class="site-list">
@@ -33,8 +32,12 @@
       <SiteCard
         {site}
         isSelected={selectedSiteId === site.site_id}
-        on:selectSite={() => dispatch('selectSite', site.site_id)}
-        on:statusChange={(e) => dispatch('statusChange', { siteId: site.site_id, status: e.detail })}
+        on:selectSite={() => dispatch("selectSite", site.site_id)}
+        on:statusChanged={(e) =>
+          dispatch("statusChanged", {
+            siteId: e.detail.siteId,
+            newStatus: e.detail.newStatus,
+          })}
       />
     {/each}
   </div>

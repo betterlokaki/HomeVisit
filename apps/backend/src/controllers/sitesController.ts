@@ -1,77 +1,76 @@
 /**
- * Controller for sites endpoints
- * Handles business logic for site-related requests
+ * Sites Controller
+ *
+ * Handles sites endpoints logic.
  */
 
 import { Request, Response } from "express";
-import { GetUserSitesResponse, EnrichedSite } from "@homevisit/common/src";
-import { postgrestService } from "../services/postgrestService.js";
-import { calculateStatus, generateSiteLink } from "../utils/siteEnricher.js";
-import { logger } from "../middleware/logger.js";
+import type { GetUserSitesResponse, EnrichedSite } from "@homevisit/common/src";
+import { postgrestService } from "../services/postgrestService";
+import { calculateStatus, createBarakLink } from "../utils/siteEnricher";
+import { logger } from "../middleware/logger";
+import {
+  RESPONSE_SUCCESS_FIELD,
+  RESPONSE_DATA_FIELD,
+  ERROR_FIELD,
+} from "../config/constants";
 
 /**
- * GET /userSites
- * Fetches all sites for a user and enriches them with:
- * - updatedStatus (calculated asynchronously)
- * - siteLink (randomly generated)
+ * GET /sites - Fetch sites by group with optional username and status filters
+ * Query params:
+ *   - group: string (required) - group name
+ *   - username: string (optional) - username filter
+ *   - status: string (optional) - seen_status filter (Seen, Partial, Not Seen)
  */
-export async function getUserSites(req: Request, res: Response): Promise<void> {
+export async function getSitesByGroup(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
-    const userId = req.query.user_id as string;
+    const groupName = req.query.group as string;
 
-    if (!userId) {
-      res.status(400).json({
-        error: "Missing required parameter: user_id",
-      });
+    if (!groupName) {
+      res
+        .status(400)
+        .json({ [ERROR_FIELD]: "Missing required parameter: group" });
       return;
     }
 
-    logger.info("GET /userSites called", { userId });
+    const username = req.query.username as string | undefined;
+    const status = req.query.status as string | undefined;
 
-    const parsedUserId = parseInt(userId, 10);
-    if (isNaN(parsedUserId)) {
-      res.status(400).json({
-        error: "Invalid user_id: must be a number",
-      });
-      return;
-    }
+    logger.info("GET /sites called", { groupName, username, status });
 
-    // Fetch sites from PostgREST
-    const sites = await postgrestService.getUserSites(parsedUserId);
+    const sites = await postgrestService.getSites(groupName, username, status);
 
-    // Enrich each site with updatedStatus and siteLink
     const enrichedSites = await Promise.all(
-      sites.map(async (site) => {
-        const [updatedStatus, siteLink] = await Promise.all([
-          calculateStatus(),
-          Promise.resolve(generateSiteLink()),
-        ]);
-
-        return {
-          ...site,
-          updatedStatus,
-          siteLink,
-        };
-      })
+      sites.map(async (site: any) => ({
+        ...site,
+        updatedStatus: await calculateStatus(site, []),
+        siteLink: createBarakLink(site, []),
+      }))
     );
 
-    logger.info("Successfully enriched sites", {
-      userId,
+    logger.info("Successfully fetched and enriched sites by group", {
+      groupName,
+      username,
+      status,
       count: enrichedSites.length,
     });
 
-    res.json({
-      success: true,
-      data: {
-        user_id: parsedUserId,
+    const response: any = {
+      [RESPONSE_SUCCESS_FIELD]: true,
+      [RESPONSE_DATA_FIELD]: {
+        group: groupName,
+        username: username || "all",
+        status: status || "all",
         sites: enrichedSites,
       },
-    });
+    };
+
+    res.json(response);
   } catch (error) {
-    logger.error("Error in getUserSites", error);
-    res.status(500).json({
-      error: "Failed to fetch user sites",
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
+    logger.error("Error in getSitesByGroup", error);
+    res.status(500).json({ [ERROR_FIELD]: "Failed to fetch sites by group" });
   }
 }
