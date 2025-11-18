@@ -94,6 +94,31 @@ class PostgRESTService {
   }
 
   /**
+   * Get group by name from PostgREST
+   */
+  async getGroupByName(groupName: string): Promise<Group | null> {
+    try {
+      logger.debug("Fetching group by name from PostgREST", { groupName });
+      const response = await this.client.get(
+        `/groups?group_name=eq.${encodeURIComponent(groupName)}`
+      );
+      const group = response.data?.[0];
+      if (group) {
+        logger.info("Successfully fetched group by name from PostgREST", {
+          groupName,
+          groupId: group.group_id,
+        });
+      } else {
+        logger.warn("Group not found", { groupName });
+      }
+      return group || null;
+    } catch (error) {
+      logger.error("Failed to fetch group by name from PostgREST", error);
+      throw error;
+    }
+  }
+
+  /**
    * Refresh expired statuses for a group via RPC function
    * Resets sites back to 'Not Seen' if their countdown has expired
    */
@@ -118,7 +143,7 @@ class PostgRESTService {
 
   /**
    * Fetch sites by group name with optional username and status filters
-   * Uses JOINs to connect sites with users and groups tables
+   * Filters sites by group_id and optionally by user_id and seen_status
    */
   async getSites(
     groupName: string,
@@ -128,15 +153,30 @@ class PostgRESTService {
     try {
       logger.debug("Fetching sites by group", { groupName, username, status });
 
-      // Build query string with filters
-      let query = `/sites?select=*&groups(group_name)=eq.${groupName}`;
-
-      if (username) {
-        query += `&users(username)=eq.${username}`;
+      // First, get the group_id by group name
+      const group = await this.getGroupByName(groupName);
+      if (!group) {
+        logger.warn("Group not found", { groupName });
+        return [];
       }
 
+      // Build query string to filter sites by group_id
+      let query = `/sites?group_id=eq.${group.group_id}`;
+
+      // If username provided, get user_id and filter by it
+      if (username) {
+        const userResponse = await this.client.get(
+          `/users?username=eq.${encodeURIComponent(username)}`
+        );
+        const user = userResponse.data?.[0];
+        if (user) {
+          query += `&user_id=eq.${user.user_id}`;
+        }
+      }
+
+      // Add status filter if provided
       if (status) {
-        query += `&seen_status=eq.${status}`;
+        query += `&seen_status=eq.${encodeURIComponent(status)}`;
       }
 
       const response = await this.client.get(query);
@@ -153,6 +193,52 @@ class PostgRESTService {
       }));
     } catch (error) {
       logger.error("Failed to fetch sites by group", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a site's seen_status by username and site name
+   */
+  async updateSiteStatus(
+    username: string,
+    siteName: string,
+    status: string
+  ): Promise<any> {
+    try {
+      logger.debug("Updating site status", { username, siteName, status });
+
+      // Build query to find site by username and site_name
+      const query = `/sites?users(username)=eq.${username}&site_name=eq.${encodeURIComponent(
+        siteName
+      )}`;
+
+      // First, fetch the site to ensure it exists
+      const response = await this.client.get(query);
+
+      if (!response.data || response.data.length === 0) {
+        logger.warn("Site not found", { username, siteName });
+        return null;
+      }
+
+      const site = response.data[0];
+
+      // Update the site's seen_status
+      const updateResponse = await this.client.patch(
+        `/sites?site_id=eq.${site.site_id}`,
+        { seen_status: status }
+      );
+
+      logger.info("Successfully updated site status", {
+        username,
+        siteName,
+        status,
+        siteId: site.site_id,
+      });
+
+      return updateResponse.data;
+    } catch (error) {
+      logger.error("Failed to update site status", error);
       throw error;
     }
   }

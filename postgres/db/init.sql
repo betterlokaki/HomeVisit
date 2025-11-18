@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS sites (
   group_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
   seen_status seen_status DEFAULT 'Not Seen',
-  status_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  -- status_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   seen_date TIMESTAMP NOT NULL DEFAULT DATE_TRUNC('day', CURRENT_TIMESTAMP),
   geometry geometry(Polygon, 4326) NOT NULL,
   CONSTRAINT fk_sites_group FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
@@ -98,39 +98,118 @@ CREATE INDEX IF NOT EXISTS idx_sites_geometry ON sites USING GIST(geometry);
 -- SAMPLE DATA
 -- ============================================================================
 
-/** Insert sample group */
+/** Insert 7-day refresh group */
 INSERT INTO groups (group_name, data_refreshments)
 VALUES
-  ('Default Group', 30000)
+  ('Weekly Refresh Group', 604800000)
 ON CONFLICT DO NOTHING;
 
-/** Insert sample users - both assigned to group_id 1 */
+/** Insert sample users - shahar and demo assigned to group_id 1 */
 INSERT INTO users (group_id, username)
 VALUES 
-  (1, 'user1'),
-  (1, 'user2')
+  (1, 'shahar'),
+  (1, 'demo')
 ON CONFLICT DO NOTHING;
 
-/** Insert sample sites - with user_id and polygon geometry assigned */
+/** Insert sample sites - with 6+ point polygons for shahar and demo users */
 INSERT INTO sites (site_name, group_id, user_id, seen_status, geometry)
 VALUES
+  -- New York (6 points)
   (
     'New York',
     1,
     1,
     'Not Seen',
     ST_SetSRID(
-      ST_GeomFromText('POLYGON((-74.3 40.5, -73.7 40.5, -73.7 40.9, -74.3 40.9, -74.3 40.5))'),
+      ST_GeomFromText('POLYGON((-74.3 40.5, -73.9 40.6, -73.7 40.5, -73.8 40.9, -74.2 40.8, -74.3 40.5))'),
       4326
     )
   ),
+  -- Egypt (6 points)
   (
     'Egypt',
     1,
     2,
     'Not Seen',
     ST_SetSRID(
-      ST_GeomFromText('POLYGON((24.0 24.0, 36.0 24.0, 36.0 32.0, 24.0 32.0, 24.0 24.0))'),
+      ST_GeomFromText('POLYGON((24.0 24.0, 30.0 24.5, 36.0 24.0, 35.5 32.0, 30.0 31.5, 24.0 24.0))'),
+      4326
+    )
+  ),
+  -- Tel Aviv (7 points)
+  (
+    'Tel Aviv',
+    1,
+    1,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((34.7 32.0, 34.8 32.05, 34.85 32.08, 34.88 32.08, 34.87 32.06, 34.82 32.02, 34.7 32.0))'),
+      4326
+    )
+  ),
+  -- Jerusalem (7 points)
+  (
+    'Jerusalem',
+    1,
+    2,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((35.2 31.75, 35.25 31.78, 35.27 31.8, 35.29 31.82, 35.28 31.79, 35.25 31.76, 35.2 31.75))'),
+      4326
+    )
+  ),
+  -- Haifa (6 points)
+  (
+    'Haifa',
+    1,
+    1,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((34.95 32.8, 35.0 32.85, 35.05 32.84, 35.04 32.81, 35.0 32.79, 34.95 32.8))'),
+      4326
+    )
+  ),
+  -- Beer Sheva (7 points)
+  (
+    'Beer Sheva',
+    1,
+    2,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((34.78 31.2, 34.83 31.25, 34.85 31.28, 34.87 31.27, 34.85 31.24, 34.82 31.21, 34.78 31.2))'),
+      4326
+    )
+  ),
+  -- Eilat (6 points)
+  (
+    'Eilat',
+    1,
+    1,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((34.95 29.5, 35.0 29.55, 35.05 29.54, 35.04 29.51, 35.0 29.49, 34.95 29.5))'),
+      4326
+    )
+  ),
+  -- Tiberias (7 points)
+  (
+    'Tiberias',
+    1,
+    2,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((35.5 32.78, 35.55 32.8, 35.58 32.82, 35.6 32.84, 35.58 32.82, 35.54 32.79, 35.5 32.78))'),
+      4326
+    )
+  ),
+  -- Netanya (6 points)
+  (
+    'Netanya',
+    1,
+    1,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((34.85 32.3, 34.9 32.33, 34.95 32.32, 34.93 32.29, 34.89 32.27, 34.85 32.3))'),
       4326
     )
   )
@@ -148,7 +227,7 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- Only update status_changed_at if seen_status actually changed
   IF OLD.seen_status IS DISTINCT FROM NEW.seen_status THEN
-    NEW.status_changed_at = CURRENT_TIMESTAMP;
+    NEW.seen_date = CURRENT_TIMESTAMP;
   END IF;
   RETURN NEW;
 END;
@@ -278,7 +357,7 @@ BEGIN
   WHERE 
     group_id = p_group_id
     AND seen_status IN ('Seen', 'Partial')
-    AND status_changed_at + v_refresh_interval <= CURRENT_TIMESTAMP
+    AND seen_date + v_refresh_interval <= CURRENT_TIMESTAMP
   RETURNING site_id INTO v_count;
   
   GET DIAGNOSTICS v_count = ROW_COUNT;

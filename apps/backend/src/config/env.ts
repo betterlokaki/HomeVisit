@@ -26,7 +26,11 @@ const envSchema = z.object({
   SITE_STATUS_OPTIONS: z.string().default("Full,Partial,No"),
   STATUS_CALCULATION_DELAY_MS: z.coerce.number().default(1000),
   SITE_LINK_DOMAIN: z.string().default("homevisit.local"),
-  ELASTIC_PROVIDER_URL: z.string().url(),
+  ELASTIC_PROVIDER_BASE_URL: z.string().url(),
+  ELASTIC_PROVIDER_ENDPOINT: z.string().default("/health"),
+  PROJECT_LINK_FORMAT: z
+    .string()
+    .default("https://homevisit.local/project?overlays={overlayIds}"),
 });
 
 type EnvConfig = z.infer<typeof envSchema>;

@@ -3,7 +3,7 @@
  */
 
 import { Router } from "express";
-import { getSitesByGroup } from "../controllers/sitesController";
+import { getSites, updateSiteStatus } from "../controllers/sitesController";
 
 const router = Router();
 /**
@@ -14,6 +14,17 @@ const router = Router();
  *   - username: string (optional) - filter by username
  *   - status: string (optional) - filter by status (Seen, Partial, Not Seen)
  */
-router.get("/", getSitesByGroup);
+router.get("/", getSites);
+
+/**
+ * PUT /sites/:username/:siteName
+ * Update a site's seen_status
+ * Params:
+ *   - username: string (required) - username
+ *   - siteName: string (required) - site name
+ * Body:
+ *   - status: string (required) - new seen_status (Seen, Partial, Not Seen)
+ */
+router.put("/:username/:siteName", updateSiteStatus);
 
 export default router;
