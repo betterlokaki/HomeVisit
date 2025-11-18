@@ -56,7 +56,7 @@ async function searchOverlays(
     const response = await axios.post(url, params);
 
     // Convert response to ElasticProviderOverlay[]
-    const overlays: ElasticProviderOverlay[] = response.data.api_response || [];
+    const overlays: ElasticProviderOverlay[] = response.data || [];
     return overlays;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

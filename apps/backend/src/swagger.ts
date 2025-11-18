@@ -17,7 +17,7 @@ export const swaggerSpec = {
   },
   servers: [
     {
-      url: "http://localhost:3000",
+      url: "http://localhost:4000",
       description: "Local development server",
     },
     {
@@ -169,7 +169,7 @@ export const swaggerSpec = {
         tags: ["Sites"],
         summary: "Get sites by group with optional filters",
         description:
-          "Retrieves sites for a specific group with optional filtering by username and/or status. The group parameter is required. Returns enriched sites with calculated status and site links.",
+          "Retrieves sites for a specific group with optional filtering by username and/or status. The group parameter is required. Returns an array of sites with their geometries and status information.",
         operationId: "getSitesByGroup",
         parameters: [
           {
@@ -179,7 +179,7 @@ export const swaggerSpec = {
             required: true,
             schema: {
               type: "string",
-              example: "Default Group",
+              example: "Weekly Refresh Group",
             },
           },
           {
@@ -189,7 +189,7 @@ export const swaggerSpec = {
             required: false,
             schema: {
               type: "string",
-              example: "user1",
+              example: "shahar",
             },
           },
           {
@@ -201,7 +201,7 @@ export const swaggerSpec = {
             schema: {
               type: "string",
               enum: ["Seen", "Partial", "Not Seen"],
-              example: "Seen",
+              example: "Not Seen",
             },
           },
         ],
@@ -224,26 +224,26 @@ export const swaggerSpec = {
                       properties: {
                         group: {
                           type: "string",
-                          example: "Default Group",
-                          description: "Group name",
+                          example: "Weekly Refresh Group",
+                          description: "Group name queried",
                         },
                         username: {
                           type: "string",
-                          example: "user1",
+                          example: "shahar",
                           description:
                             "Username filter applied (or 'all' if not specified)",
                         },
                         status: {
                           type: "string",
-                          example: "Seen",
+                          example: "Not Seen",
                           description:
                             "Status filter applied (or 'all' if not specified)",
                         },
                         sites: {
                           type: "array",
-                          description: "Array of enriched sites",
+                          description: "Array of sites matching the filters",
                           items: {
-                            $ref: "#/components/schemas/EnrichedSite",
+                            $ref: "#/components/schemas/Site",
                           },
                         },
                       },
@@ -280,6 +280,10 @@ export const swaggerSpec = {
                       type: "string",
                       example: "Failed to fetch sites by group",
                     },
+                    details: {
+                      type: "string",
+                      example: "Database connection error",
+                    },
                   },
                 },
               },
@@ -309,7 +313,7 @@ export const swaggerSpec = {
           },
           site_name: {
             type: "string",
-            example: "Downtown Plaza",
+            example: "New York",
             description: "Name of the site",
           },
           group_id: {
@@ -319,79 +323,28 @@ export const swaggerSpec = {
           },
           user_id: {
             type: "integer",
-            example: 42,
+            example: 1,
             description: "User ID this site is assigned to",
           },
           seen_status: {
             type: "string",
             enum: ["Seen", "Partial", "Not Seen"],
-            example: "Partial",
+            example: "Not Seen",
             description: "Status of whether the site has been observed",
           },
-          geometry: {
-            $ref: "#/components/schemas/GeoJSONPolygon",
-          },
-        },
-      },
-      EnrichedSite: {
-        allOf: [
-          {
-            $ref: "#/components/schemas/Site",
-          },
-          {
-            type: "object",
-            required: ["updatedStatus", "siteLink"],
-            properties: {
-              updatedStatus: {
-                type: "string",
-                enum: ["Full", "Partial", "No"],
-                example: "Full",
-                description: "Backend-calculated update status",
-              },
-              siteLink: {
-                type: "string",
-                format: "uri",
-                example: "https://maps.google.com/?q=40.7128,-74.0060",
-                description: "Generated link to the site location",
-              },
-            },
-          },
-        ],
-      },
-      GeoJSONPolygon: {
-        type: "object",
-        required: ["type", "coordinates"],
-        properties: {
-          type: {
+          seen_date: {
             type: "string",
-            enum: ["Polygon"],
-            description: "GeoJSON type",
+            format: "date-time",
+            example: "2025-11-18T00:00:00",
+            description: "ISO 8601 timestamp of last seen status update",
           },
-          coordinates: {
-            type: "array",
+          geometry: {
+            type: "string",
+            format: "wkt",
+            example:
+              "POLYGON((-74.3 40.5, -73.9 40.6, -73.7 40.5, -73.8 40.9, -74.2 40.8, -74.3 40.5))",
             description:
-              "Array of rings. Each ring is an array of [longitude, latitude] pairs. The first ring is the outer boundary, subsequent rings are holes.",
-            items: {
-              type: "array",
-              items: {
-                type: "array",
-                minItems: 2,
-                maxItems: 2,
-                items: {
-                  type: "number",
-                },
-                example: [-74.0, 40.7],
-              },
-            },
-            example: [
-              [
-                [-74.0, 40.7],
-                [-73.9, 40.7],
-                [-73.9, 40.8],
-                [-74.0, 40.8],
-                [-74.0, 40.7],
-              ],
-            ],
+              "WKT (Well-Known Text) polygon geometry of the site with 6+ vertices",
           },
         },
       },

@@ -14,13 +14,11 @@ import { logger } from "../middleware/logger.js";
  * @param wktGeometries - Array of WKT geometry strings (typically POLYGON)
  * @returns MultiPolygon WKT string or null if no valid geometries
  */
-export function mergeGeometriesToMultiPolygon(
-  wktGeometries: string[]
-): string | null {
+export function mergeGeometriesToMultiPolygon(wktGeometries: string[]): string {
   try {
     if (!wktGeometries || wktGeometries.length === 0) {
       logger.warn("No geometries provided to merge");
-      return null;
+      return "";
     }
 
     // Parse WKT strings to GeoJSON
@@ -36,14 +34,14 @@ export function mergeGeometriesToMultiPolygon(
           return parsed;
         } catch (error) {
           logger.error("Error parsing WKT geometry", { wkt, error });
-          return null;
+          return "";
         }
       })
       .filter((geom) => geom !== null);
 
     if (polygons.length === 0) {
       logger.warn("No valid polygons to merge");
-      return null;
+      return "";
     }
 
     // Extract polygon coordinates from parsed geometries
@@ -53,13 +51,13 @@ export function mergeGeometriesToMultiPolygon(
           return geom.coordinates;
         }
         logger.warn("Unexpected geometry type, skipping", { type: geom.type });
-        return null;
+        return "";
       })
       .filter((coords) => coords !== null);
 
     if (polygonCoordinates.length === 0) {
       logger.warn("No valid polygon coordinates extracted");
-      return null;
+      return "";
     }
 
     // Create MultiPolygon GeoJSON
@@ -79,7 +77,7 @@ export function mergeGeometriesToMultiPolygon(
     return wktOutput;
   } catch (error) {
     logger.error("Error merging geometries", error);
-    return null;
+    return "";
   }
 }
 

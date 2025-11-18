@@ -14,6 +14,13 @@ import {
   ERROR_FIELD,
 } from "../config/constants";
 import { Site } from "@homevisit/common";
+import { fetchOverlays } from "../services/overlayService";
+import { mergeGeometriesToMultiPolygon } from "../utils/geometryMerger";
+import {
+  calcaulteIntersectionPrecent,
+  createProjectLink,
+  filterOverlaysByIntersection,
+} from "../utils/siteEnricher";
 
 /**
  * GET /sites - Fetch sites by group with optional username and status filters
@@ -39,6 +46,21 @@ export async function getSites(req: Request, res: Response): Promise<void> {
     logger.info("GET /sites called", { groupName, username, status });
 
     const sites = await postgrestService.getSites(groupName, username, status);
+    const group = await postgrestService.getGroupByName(groupName);
+    const groudRefreshSeconds = group?.data_refreshments || 0;
+    const wkt = mergeGeometriesToMultiPolygon(
+      sites.map((site) => site.geometry)
+    );
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - groudRefreshSeconds * 1000);
+    const overlays = await fetchOverlays(wkt, startDate, endDate);
+    const enrichedSites = await Promise.all(
+      sites.map(async (site: Site) => ({
+        ...site,
+        updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
+        siteLink: createProjectLink(site, overlays),
+      }))
+    );
 
     logger.info("Successfully fetched sites by group", {
       groupName,
@@ -47,15 +69,7 @@ export async function getSites(req: Request, res: Response): Promise<void> {
       count: sites.length,
     });
 
-    const response: any = {
-      [RESPONSE_SUCCESS_FIELD]: true,
-      [RESPONSE_DATA_FIELD]: {
-        group: groupName,
-        username: username || "all",
-        status: status || "all",
-        sites: sites,
-      },
-    };
+    const response: any = enrichedSites;
 
     res.json(response);
   } catch (error) {
@@ -63,12 +77,10 @@ export async function getSites(req: Request, res: Response): Promise<void> {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    res
-      .status(500)
-      .json({
-        [ERROR_FIELD]: "Failed to fetch sites by group",
-        details: error instanceof Error ? error.message : String(error),
-      });
+    res.status(500).json({
+      [ERROR_FIELD]: "Failed to fetch sites by group",
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
