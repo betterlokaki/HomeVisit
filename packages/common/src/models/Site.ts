@@ -2,20 +2,17 @@
  * Shared type definitions for Site entity
  */
 
-export type SiteStatus = "online" | "offline" | "maintenance";
+export type SeenStatus = "Seen" | "Partial" | "Not Seen";
 export type UpdatedStatus = "Full" | "Partial" | "No";
 
 export interface Site {
   site_id: number;
-  site_code: string;
-  name: string;
-  geometry: GeoJSON.Point;
+  site_name: string;
   group_id: number;
-  status: SiteStatus;
-  last_seen: string;
-  last_data: string;
-  created_at: string;
-  updated_at: string;
+  user_id: number;
+  seen_status: SeenStatus;
+  seen_date: Date;
+  geometry: string; // WKT (Well-Known Text) format
 }
 
 /**
@@ -38,17 +35,11 @@ export interface SiteCardProps {
   site: EnrichedSite;
 }
 
-// GeoJSON types
+// GeoJSON types (kept for reference if needed elsewhere)
 namespace GeoJSON {
-  export interface Point {
-    type: "Point";
-    coordinates: [number, number]; // [longitude, latitude]
-  }
-
-  export interface Feature<T = any> {
-    type: "Feature";
-    geometry: T;
-    properties: any;
+  export interface Polygon {
+    type: "Polygon";
+    coordinates: [number, number][][]; // Array of rings, each ring is array of [longitude, latitude]
   }
 }
 

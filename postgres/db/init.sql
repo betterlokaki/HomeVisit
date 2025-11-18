@@ -1,9 +1,10 @@
 /**
  * HomeVisit Database Schema
  * 
- * This script initializes the PostgreSQL database with PostGIS support.
- * It creates users, sites, and site assignments tables with proper indexes,
- * constraints, and RPC functions for authentication and site management.
+ * This script initializes the PostgreSQL database with the following tables:
+ * - groups: Group definitions with refresh intervals
+ * - users: User records linked to groups
+ * - sites: Site data with seen_status and polygon geometry linked to users and groups
  */
 
 -- Enable PostGIS extension
@@ -13,16 +14,19 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 -- DROP OLD TABLES (for schema migration)
 -- ============================================================================
 
-/** Drop old user_sites many-to-many table if it exists */
+/** Drop old tables if they exist */
 DROP TABLE IF EXISTS user_sites CASCADE;
+DROP TABLE IF EXISTS sites CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS groups CASCADE;
 
 -- ============================================================================
 -- ENUMS
 -- ============================================================================
 
-/** Site status enumeration: online, offline, or maintenance */
+/** Site seen_status enumeration: Seen, Partial, Not Seen */
 DO $$ BEGIN
-    CREATE TYPE site_status AS ENUM ('online', 'offline', 'maintenance');
+    CREATE TYPE seen_status AS ENUM ('Seen', 'Partial', 'Not Seen');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
@@ -32,67 +36,129 @@ END $$;
 -- ============================================================================
 
 /**
- * users table - User profile data
+ * groups table - Group definitions for organizing sites and users
  * 
- * Stores user information. Simple username-based access (no passwords).
- * Each user belongs to a group via group_id, determining which sites they can access.
+ * Stores group information including the refresh interval for data statuses.
+ */
+CREATE TABLE IF NOT EXISTS groups (
+  group_id BIGSERIAL PRIMARY KEY,
+  group_name VARCHAR(255) NOT NULL,
+  data_refreshments BIGINT NOT NULL DEFAULT 30000,
+  CONSTRAINT chk_refresh_positive CHECK (data_refreshments > 0)
+);
+
+-- Index on group_name for lookups
+CREATE INDEX IF NOT EXISTS idx_groups_group_name ON groups(group_name);
+
+/**
+ * users table - User profile data (simplified)
+ * 
+ * Stores minimal user information.
+ * Each user belongs to a group via group_id.
  */
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGSERIAL PRIMARY KEY,
-  username VARCHAR(50) UNIQUE NOT NULL,
-  email VARCHAR(255),
-  group_id BIGINT NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  group_id BIGINT NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  CONSTRAINT fk_users_group FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE
 );
 
--- Index on username for fast lookups
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
--- Index on group_id for efficient site queries
+-- Index on group_id for efficient lookups
 CREATE INDEX IF NOT EXISTS idx_users_group_id ON users(group_id);
 
+-- Index on username for lookups
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
 /**
- * sites table - Geographic location data with PostGIS geometry
+ * sites table - Site data with seen_status and polygon geometry
  * 
- * Stores site information including geographic coordinates (via PostGIS geometry),
- * status, and timestamps for monitoring. Each site belongs to a group via group_id.
+ * Stores site information with simplified schema including polygon boundaries.
+ * Each site belongs to a group and a user.
  */
 CREATE TABLE IF NOT EXISTS sites (
   site_id BIGSERIAL PRIMARY KEY,
-  site_code VARCHAR(50) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  geometry geometry(Point, 4326) NOT NULL,
-  group_id BIGINT NOT NULL DEFAULT 1,
-  status site_status DEFAULT 'offline',
-  last_seen TIMESTAMPTZ DEFAULT now(),
-  last_data TIMESTAMPTZ DEFAULT now(),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  site_name VARCHAR(255) NOT NULL,
+  group_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  seen_status seen_status DEFAULT 'Not Seen',
+  status_changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  seen_date TIMESTAMP NOT NULL DEFAULT DATE_TRUNC('day', CURRENT_TIMESTAMP),
+  geometry geometry(Polygon, 4326) NOT NULL,
+  CONSTRAINT fk_sites_group FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+  CONSTRAINT fk_sites_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- Indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_sites_site_code ON sites(site_code);
-CREATE INDEX IF NOT EXISTS idx_sites_status ON sites(status);
 CREATE INDEX IF NOT EXISTS idx_sites_group_id ON sites(group_id);
+CREATE INDEX IF NOT EXISTS idx_sites_user_id ON sites(user_id);
+CREATE INDEX IF NOT EXISTS idx_sites_seen_status ON sites(seen_status);
 CREATE INDEX IF NOT EXISTS idx_sites_geometry ON sites USING GIST(geometry);
 
 -- ============================================================================
 -- SAMPLE DATA
 -- ============================================================================
 
-/** Insert sample sites - both assigned to group_id 1 */
-INSERT INTO sites (site_code, name, geometry, group_id, status, last_seen, last_data)
+/** Insert sample group */
+INSERT INTO groups (group_name, data_refreshments)
 VALUES
-  ('NYC', 'New York', ST_SetSRID(ST_GeomFromText('POINT(-74.0060 40.7128)'), 4326), 1, 'online', now(), now()),
-  ('EGYPT', 'Egypt', ST_SetSRID(ST_GeomFromText('POINT(31.2357 30.0444)'), 4326), 1, 'online', now(), now())
-ON CONFLICT (site_code) DO NOTHING;
+  ('Default Group', 30000)
+ON CONFLICT DO NOTHING;
 
 /** Insert sample users - both assigned to group_id 1 */
-INSERT INTO users (username, email, group_id)
+INSERT INTO users (group_id, username)
 VALUES 
-  ('demo', 'demo@example.com', 1),
-  ('shahar', 'shahar@example.com', 1)
-ON CONFLICT (username) DO NOTHING;
+  (1, 'user1'),
+  (1, 'user2')
+ON CONFLICT DO NOTHING;
+
+/** Insert sample sites - with user_id and polygon geometry assigned */
+INSERT INTO sites (site_name, group_id, user_id, seen_status, geometry)
+VALUES
+  (
+    'New York',
+    1,
+    1,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((-74.3 40.5, -73.7 40.5, -73.7 40.9, -74.3 40.9, -74.3 40.5))'),
+      4326
+    )
+  ),
+  (
+    'Egypt',
+    1,
+    2,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((24.0 24.0, 36.0 24.0, 36.0 32.0, 24.0 32.0, 24.0 24.0))'),
+      4326
+    )
+  )
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+/**
+ * Trigger to update status_changed_at when seen_status changes
+ */
+CREATE OR REPLACE FUNCTION update_status_changed_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only update status_changed_at if seen_status actually changed
+  IF OLD.seen_status IS DISTINCT FROM NEW.seen_status THEN
+    NEW.status_changed_at = CURRENT_TIMESTAMP;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_status_changed_at ON sites;
+CREATE TRIGGER trigger_update_status_changed_at
+  BEFORE UPDATE ON sites
+  FOR EACH ROW
+  EXECUTE FUNCTION update_status_changed_at();
 
 -- ============================================================================
 -- ROLES AND PERMISSIONS
@@ -107,7 +173,7 @@ END $$;
 
 /** Grant basic permissions to anon role */
 GRANT USAGE ON SCHEMA public TO anon;
-GRANT SELECT ON users, sites TO anon;
+GRANT SELECT ON groups, users, sites TO anon;
 GRANT UPDATE ON sites TO anon;
 
 -- ============================================================================
@@ -115,80 +181,108 @@ GRANT UPDATE ON sites TO anon;
 -- ============================================================================
 
 /**
- * get_or_create_user - Get existing user or create new one by username
+ * get_or_create_user - Get existing user or create new one with default group
  * 
- * @param p_username - Username (unique, no password required)
+ * @param p_group_id - Group ID to assign to the user (default: 1)
  * 
  * @returns user_id of the user
  */
-CREATE OR REPLACE FUNCTION public.get_or_create_user(p_username TEXT)
+CREATE OR REPLACE FUNCTION public.get_or_create_user(p_group_id BIGINT DEFAULT 1)
 RETURNS BIGINT LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_user_id BIGINT;
 BEGIN
-  -- Try to get existing user
-  SELECT user_id INTO v_user_id FROM users WHERE username = p_username LIMIT 1;
-  
-  -- If user exists, return their ID
-  IF v_user_id IS NOT NULL THEN
-    RETURN v_user_id;
-  END IF;
-  
-  -- Otherwise create new user
-  INSERT INTO users (username)
-  VALUES (p_username)
+  -- Create new user in the specified group
+  INSERT INTO users (group_id)
+  VALUES (p_group_id)
   RETURNING user_id INTO v_user_id;
   
   RETURN v_user_id;
 EXCEPTION
-  WHEN unique_violation THEN
-    -- Race condition: user was created between check and insert
-    SELECT user_id INTO v_user_id FROM users WHERE username = p_username LIMIT 1;
-    RETURN v_user_id;
+  WHEN OTHERS THEN
+    -- Log error or handle as needed
+    RAISE;
 END $$;
 
-GRANT EXECUTE ON FUNCTION public.get_or_create_user(TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_or_create_user(BIGINT) TO anon;
 
 /**
  * get_user_sites - Retrieve all sites for a given user
  * 
- * Based on the user's group_id, returns all sites in the same group.
+ * Based on the user's ID, returns all sites assigned to that user including geometry.
  * 
  * @param p_user_id - ID of the user
  * 
- * @returns Set of site records belonging to the user's group
+ * @returns Set of site records belonging to the user
  */
 CREATE OR REPLACE FUNCTION public.get_user_sites(p_user_id BIGINT)
 RETURNS TABLE (
   site_id BIGINT,
-  site_code VARCHAR,
-  name VARCHAR,
-  geometry geometry,
-  status site_status,
-  last_seen TIMESTAMPTZ,
-  last_data TIMESTAMPTZ,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
+  site_name VARCHAR,
+  group_id BIGINT,
+  user_id BIGINT,
+  seen_status seen_status,
+  geometry geometry
 ) LANGUAGE sql STABLE AS $$
-  SELECT s.site_id, s.site_code, s.name, s.geometry, s.status, s.last_seen, s.last_data, s.created_at, s.updated_at
+  SELECT s.site_id, s.site_name, s.group_id, s.user_id, s.seen_status, s.geometry
   FROM sites s
-  WHERE s.group_id = (SELECT group_id FROM users WHERE user_id = p_user_id)
-  ORDER BY s.name;
+  WHERE s.user_id = p_user_id
+  ORDER BY s.site_name;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_user_sites(BIGINT) TO anon;
 
 /**
- * update_site_status - Update a site's status and last_seen timestamp
+ * update_site_status - Update a site's seen_status
  * 
  * @param p_site_id - ID of the site to update
- * @param p_new_status - New status value
+ * @param p_new_status - New status value (Seen, Partial, Not Seen)
  */
-CREATE OR REPLACE FUNCTION public.update_site_status(p_site_id BIGINT, p_new_status site_status)
+CREATE OR REPLACE FUNCTION public.update_site_status(p_site_id BIGINT, p_new_status seen_status)
 RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
   UPDATE sites
-  SET status = p_new_status, last_seen = now(), updated_at = now()
+  SET seen_status = p_new_status
   WHERE site_id = p_site_id;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.update_site_status(BIGINT, site_status) TO anon;
+GRANT EXECUTE ON FUNCTION public.update_site_status(BIGINT, seen_status) TO anon;
+
+/**
+ * refresh_expired_statuses - Reset seen_status to 'Not Seen' for sites whose countdown has expired
+ * 
+ * Based on the group's data_refreshments interval (in milliseconds),
+ * reset any 'Seen' or 'Partial' sites back to 'Not Seen' if the refresh interval has passed.
+ * 
+ * @param p_group_id - ID of the group whose sites should be refreshed
+ * 
+ * @returns Number of sites that were refreshed
+ */
+CREATE OR REPLACE FUNCTION public.refresh_expired_statuses(p_group_id BIGINT)
+RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_refresh_interval INTERVAL;
+  v_count INTEGER;
+BEGIN
+  -- Get the refresh interval for the group (convert from milliseconds to interval)
+  SELECT (data_refreshments || ' milliseconds')::INTERVAL INTO v_refresh_interval
+  FROM groups
+  WHERE group_id = p_group_id;
+  
+  IF v_refresh_interval IS NULL THEN
+    RAISE EXCEPTION 'Group % not found', p_group_id;
+  END IF;
+  
+  -- Update sites that have passed the refresh interval
+  UPDATE sites
+  SET seen_status = 'Not Seen'
+  WHERE 
+    group_id = p_group_id
+    AND seen_status IN ('Seen', 'Partial')
+    AND status_changed_at + v_refresh_interval <= CURRENT_TIMESTAMP
+  RETURNING site_id INTO v_count;
+  
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END $$;
+
+GRANT EXECUTE ON FUNCTION public.refresh_expired_statuses(BIGINT) TO anon;

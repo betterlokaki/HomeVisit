@@ -32,6 +32,7 @@ export const POSTGREST_AUTH_PARAM = config.POSTGREST_AUTH_PARAM;
 export const SITE_STATUS_OPTIONS = config.SITE_STATUS_OPTIONS.split(",");
 export const STATUS_CALCULATION_DELAY_MS = config.STATUS_CALCULATION_DELAY_MS;
 export const SITE_LINK_DOMAIN = config.SITE_LINK_DOMAIN;
+export const ELASTIC_PROVIDER_URL = config.ELASTIC_PROVIDER_URL;
 
 // ============================================================================
 // API Response Configuration

@@ -46,7 +46,11 @@ class PostgRESTService {
         userId,
         count: response.data?.length,
       });
-      return response.data || [];
+      // Convert geometry from GeoJSON to WKT format
+      return (response.data || []).map((site: any) => ({
+        ...site,
+        geometry: this.geometryToWKT(site.geometry),
+      }));
     } catch (error) {
       logger.error("Failed to fetch from PostgREST", error);
       throw error;
@@ -142,11 +146,37 @@ class PostgRESTService {
         status,
         count: response.data?.length,
       });
-      return response.data || [];
+      // Convert geometry from GeoJSON to WKT format
+      return (response.data || []).map((site: any) => ({
+        ...site,
+        geometry: this.geometryToWKT(site.geometry),
+      }));
     } catch (error) {
       logger.error("Failed to fetch sites by group", error);
       throw error;
     }
+  }
+
+  /**
+   * Convert GeoJSON Polygon to WKT (Well-Known Text) format
+   */
+  private geometryToWKT(geometry: any): string {
+    if (!geometry || !geometry.coordinates) {
+      return "";
+    }
+
+    // Extract coordinates from GeoJSON Polygon
+    const rings = geometry.coordinates;
+    const wktRings = rings
+      .map((ring: number[][]) => {
+        const coords = ring
+          .map((coord: number[]) => `${coord[0]} ${coord[1]}`)
+          .join(", ");
+        return `(${coords})`;
+      })
+      .join(", ");
+
+    return `POLYGON(${wktRings})`;
   }
 }
 
