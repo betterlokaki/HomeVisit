@@ -41,44 +41,29 @@ export async function calcaulteIntersectionPrecent(
       logger.warn("Failed to parse site geometry", { geometry: site.geometry });
       return "No";
     }
-    const siteFeat = feature(siteGeom);
+    const siteFeat = feature(siteGeom as any);
 
-    // Parse and union all overlay geometries
+    // Parse and collect all valid overlay geometries
     const overlayFeats = overlays
       .map((overlay: any) => {
         try {
           const geom = wkt.parse((overlay.geo?.wkt || "") as any);
           if (!geom) return null;
-          return feature(geom);
+          return feature(geom as any);
         } catch (e) {
           logger.warn("Failed to parse overlay geometry", { overlay });
           return null;
         }
       })
-      .filter((f) => f !== null);
+      .filter((f) => f !== null) as any[];
 
     if (overlayFeats.length === 0) {
       logger.debug("No valid overlay geometries");
       return "No";
     }
 
-    // Perform unary union of all overlays
-    let unionedOverlay: any = overlayFeats[0];
-    for (let i = 1; i < overlayFeats.length; i++) {
-      try {
-        // Union requires FeatureCollections
-        const fc1 = featureCollection([unionedOverlay]);
-        const fc2 = featureCollection([overlayFeats[i]]);
-        unionedOverlay = union(fc1 as any, fc2 as any);
-        if (!unionedOverlay) {
-          logger.warn("Union resulted in null");
-          continue;
-        }
-      } catch (e) {
-        logger.warn("Failed to union overlay geometries", { error: e });
-        continue;
-      }
-    }
+    // Perform iterative union of all overlays
+    let unionedOverlay: any = union(featureCollection(overlayFeats));
 
     if (!unionedOverlay) {
       logger.debug("No valid unioned overlay");
@@ -86,24 +71,23 @@ export async function calcaulteIntersectionPrecent(
     }
 
     // Calculate intersection between site and unioned overlays
-    let intersection: any;
+    let p: any;
+    let d = unionedOverlay;
     try {
-      const siteFc = featureCollection([siteFeat as any]);
-      const overlayFc = featureCollection([unionedOverlay as any]);
-      intersection = intersect(siteFc as any, overlayFc as any);
+      p = intersect(featureCollection([siteFeat, d]));
     } catch (e) {
       logger.warn("Failed to calculate intersection", { error: e });
       return "No";
     }
 
-    if (!intersection) {
+    if (!p) {
       logger.debug("No intersection found between site and overlays");
       return "No";
     }
 
     // Calculate areas
-    const siteArea = area(siteFeat);
-    const intersectionArea = area(intersection);
+    const siteArea = area(siteFeat as any);
+    const intersectionArea = area(p as any);
 
     if (siteArea === 0) {
       logger.warn("Site area is zero", { site: site.site_id });
@@ -121,7 +105,7 @@ export async function calcaulteIntersectionPrecent(
     });
 
     // Determine status based on coverage
-    if (coveragePercentage === 100) {
+    if (Math.abs(coveragePercentage - 100) < 1e-9) {
       return "Full";
     } else if (coveragePercentage > 0) {
       return "Partial";
@@ -134,10 +118,6 @@ export async function calcaulteIntersectionPrecent(
   }
 }
 
-/**
- * Filter overlays that intersect with a specific site
- * Returns only the overlays whose geometry intersects with the site geometry
- */
 export function filterOverlaysByIntersection(
   site: Site,
   overlays: ElasticProviderOverlay[]
@@ -155,7 +135,7 @@ export function filterOverlaysByIntersection(
       });
       return [];
     }
-    const siteFeat = feature(siteGeom);
+    const siteFeat = feature(siteGeom as any);
 
     // Filter overlays based on intersection
     return overlays.filter((overlay: any) => {
@@ -163,14 +143,12 @@ export function filterOverlaysByIntersection(
         const overlayGeom = wkt.parse((overlay.geo?.wkt || "") as any);
         if (!overlayGeom) return false;
 
-        const overlayFeat = feature(overlayGeom);
+        const overlayFeat = feature(overlayGeom as any);
 
         // Check if the overlay intersects with the site
-        const siteFc = featureCollection([siteFeat as any]);
-        const overlayFc = featureCollection([overlayFeat as any]);
-        const intersection = intersect(siteFc as any, overlayFc as any);
+        const intersection = intersect(siteFeat as any, overlayFeat as any);
 
-        return intersection !== null;
+        return intersection !== null && intersection !== undefined;
       } catch (e) {
         logger.warn("Failed to check overlay intersection with site", {
           overlay,
@@ -181,10 +159,9 @@ export function filterOverlaysByIntersection(
     });
   } catch (error) {
     logger.error("Error filtering overlays by intersection", error);
-    return overlays; // Return all overlays on error to be safe
+    return [];
   }
 }
-
 /**
  * Generate project link URL using configured format
  * Extracts overlay entity IDs and substitutes them into the PROJECT_LINK_FORMAT
