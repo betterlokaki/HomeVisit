@@ -15,7 +15,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "include": [
+    "../../apps/locatx-frame/src/**/*.ts",
+    "../../apps/locatx-frame/src/**/*.svelte"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-
