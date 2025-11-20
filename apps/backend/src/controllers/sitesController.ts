@@ -21,6 +21,7 @@ import {
   createProjectLink,
   filterOverlaysByIntersection,
 } from "../utils/siteEnricher";
+import { cwd } from "process";
 
 /**
  * GET /sites - Fetch sites by group with optional username and status filters
@@ -98,8 +99,9 @@ export async function updateSiteStatus(
 ): Promise<void> {
   try {
     const { username, siteName } = req.params;
-    const { status } = req.body;
-
+    console.log(req.body);
+    const { status } = req.body.status;
+    console.log(req.body);
     if (!username || !siteName || !status) {
       res.status(400).json({
         [ERROR_FIELD]:

@@ -15,16 +15,16 @@
   }
 
   // Handlers for action buttons
-  function handleCompleted() {
-    visitStore.updateCardStatus(card.site_id, "Seen");
+  async function handleCompleted() {
+    await visitStore.updateCardStatus(card.site_id, "Seen");
   }
 
-  function handlePartiallyCompleted() {
-    visitStore.updateCardStatus(card.site_id, "Partial");
+  async function handlePartiallyCompleted() {
+    await visitStore.updateCardStatus(card.site_id, "Partial");
   }
 
-  function handleNotDone() {
-    visitStore.updateCardStatus(card.site_id, "Not Seen");
+  async function handleNotDone() {
+    await visitStore.updateCardStatus(card.site_id, "Not Seen");
   }
 
   function handleKeyDown(event: KeyboardEvent, handler: () => void) {
@@ -197,12 +197,12 @@
       <div
         class="flex flex-col font-bold text-xs leading-5 justify-center text-gray-300 text-right flex-1"
       >
-        <p>פקח אחראי</p>
+        <p>אחראי</p>
       </div>
       <div
         class="flex flex-col font-normal text-xs leading-5 justify-center whitespace-nowrap text-gray-300 text-right w-32"
       >
-        <p>ישראל ישראלי</p>
+        <p>{card.user_id}</p>
       </div>
     </div>
 
