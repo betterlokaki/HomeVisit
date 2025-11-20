@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import type { VisitCard } from "../stores/visitStore";
+  import { visitStore } from "../stores/visitStore";
   import ActionButtons from "./ActionButtons.svelte";
 
   export let card: VisitCard;
@@ -8,15 +9,22 @@
 
   const dispatch = createEventDispatcher();
 
-  // Simple handler for the lightning button
-  async function onCancel(cardId: number) {
-    console.log("Lightning button clicked for site:", cardId);
-    dispatch("cancel", cardId);
-  }
-
   // Handler for card selection
   function onCardClick() {
     dispatch("select", card.site_id);
+  }
+
+  // Handlers for action buttons
+  function handleCompleted() {
+    visitStore.updateCardStatus(card.site_id, "Seen");
+  }
+
+  function handlePartiallyCompleted() {
+    visitStore.updateCardStatus(card.site_id, "Partial");
+  }
+
+  function handleNotDone() {
+    visitStore.updateCardStatus(card.site_id, "Not Seen");
   }
 
   function handleKeyDown(event: KeyboardEvent, handler: () => void) {
@@ -47,8 +55,25 @@
         borderColor: "border-green-400",
         textColor: "text-green-400",
       },
+      "Not Done": {
+        text: "מחכה לביקור",
+        borderColor: "border-red-400",
+        textColor: "text-red-400",
+      },
     };
     return statusMap[status] || statusMap["Not Seen"];
+  }
+
+  // Get updated status display based on updatedStatus field
+  function getUpdatedStatusDisplay(status: string) {
+    if (status === "No") {
+      return {
+        text: "אין איסוף",
+        borderColor: "border-red-500",
+        textColor: "text-red-500",
+      };
+    }
+    return getSeenStatusDisplay(status);
   }
 
   // Format date function
@@ -68,8 +93,8 @@
 <!-- Simple card with just the lightning bolt button at top-left -->
 <div
   class="bg-gray-800 border {isSelected
-    ? 'border-blue-400 shadow-lg shadow-blue-400/50 scale-105'
-    : 'border-gray-700'} p-4 rounded-lg w-full min-h-[100px] relative cursor-pointer transition-all duration-200"
+    ? 'border-blue-400 shadow-lg shadow-blue-400/50 scale-[1.03]'
+    : 'border-gray-700'} pl-12 pr-0 rounded-lg w-full min-h-[100px] relative transition-all duration-300 ease-out hover:scale-102 hover:shadow-xl hover:shadow-blue-400/30 hover:border-blue-300 cursor-default"
   dir="rtl"
   on:click={onCardClick}
   on:keydown={(e) => handleKeyDown(e, onCardClick)}
@@ -77,13 +102,27 @@
   tabindex="0"
 >
   <!-- Lightning Bolt Button - Top Left -->
-  <button
-    on:click|stopPropagation={() => onCancel(card.site_id)}
-    on:keydown={(e) => handleKeyDown(e, () => onCancel(card.site_id))}
-    class="absolute top-2 left-2 border border-gray-600 bg-gray-700 hover:bg-gray-600 flex items-center justify-center h-5 w-5 rounded transition-colors group"
-    title="פתח מפקח"
+  <a
+    href={card.updatedStatus === "No" ? "#" : card.siteLink}
+    target={card.updatedStatus === "No" ? "_self" : "_blank"}
+    rel="noopener noreferrer"
+    on:click|stopPropagation={(e) => {
+      if (card.updatedStatus === "No") {
+        e.preventDefault();
+      }
+    }}
+    on:keydown={(e) => handleKeyDown(e, () => {})}
+    class="absolute top-2 left-2 border {card.updatedStatus === 'No'
+      ? 'border-gray-500 bg-gray-800 cursor-not-allowed opacity-50'
+      : 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer'} flex items-center justify-center h-5 w-5 rounded transition-colors group"
+    title={card.updatedStatus === "No" ? "לא זמין" : "פתח מפקח"}
+    style={card.updatedStatus === "No" ? "pointer-events: none;" : ""}
   >
-    <div class="text-gray-100 group-hover:text-white">
+    <div
+      class={card.updatedStatus === "No"
+        ? "text-gray-500"
+        : "text-gray-100 group-hover:text-white"}
+    >
       <svg
         width="13"
         height="13"
@@ -100,21 +139,21 @@
         />
       </svg>
     </div>
-  </button>
+  </a>
 
-  <!-- Action Buttons - Show when selected, positioned next to lightning bolt -->
-  {#if isSelected}
+  <!-- Action Buttons - Show when selected and updatedStatus is not 'No' -->
+  {#if isSelected && card.updatedStatus !== "No"}
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
-      class="absolute top-2 left-24 flex items-center"
+      class="absolute top-2 left-9 flex items-center"
       on:click|stopPropagation
     >
       <ActionButtons
-        on:completed={() =>
-          console.log("Completed action for card:", card.site_id)}
-        on:partiallyCompleted={() =>
-          console.log("Partially completed action for card:", card.site_id)}
+        disabledButton={card.updatedStatus === "Partial" ? "completed" : null}
+        on:completed={handleCompleted}
+        on:partiallyCompleted={handlePartiallyCompleted}
+        on:notDone={handleNotDone}
       />
     </div>
   {/if}
@@ -124,21 +163,21 @@
     <div class="flex flex-col gap-1.5 items-end w-20">
       <!-- Status Badge -->
       <div
-        class="{getSeenStatusDisplay(card.seen_status)
+        class="{getUpdatedStatusDisplay(card.updatedStatus)
           .borderColor} border flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-sm w-full"
       >
         <p
-          class="font-normal text-xs leading-3 {getSeenStatusDisplay(
-            card.seen_status
+          class="font-normal text-xs leading-3 {getUpdatedStatusDisplay(
+            card.updatedStatus
           ).textColor} text-right"
           style="font-size: 10px;"
         >
-          {getSeenStatusDisplay(card.seen_status).text}
+          {getUpdatedStatusDisplay(card.updatedStatus).text}
         </p>
         <!-- Small status icon circle -->
         <div
-          class="w-2 h-2 rounded-full {getSeenStatusDisplay(
-            card.seen_status
+          class="w-2 h-2 rounded-full {getUpdatedStatusDisplay(
+            card.updatedStatus
           ).textColor.replace('text-', 'bg-')}"
         ></div>
       </div>
@@ -173,20 +212,6 @@
         class="flex flex-col font-bold text-xs leading-5 justify-center text-gray-300 text-right flex-1"
       >
         <p>תאריך ביקור אחרון</p>
-      </div>
-      <div
-        class="flex flex-col font-normal text-xs leading-5 justify-center whitespace-nowrap text-gray-300 text-right w-32"
-      >
-        <p>{formatDate(card.seen_date)}</p>
-      </div>
-    </div>
-
-    <!-- Last Photo Date Row -->
-    <div class="flex items-start w-full gap-3">
-      <div
-        class="flex flex-col font-bold text-xs leading-5 justify-center text-gray-300 text-right flex-1"
-      >
-        <p>תאריך צילום אחרון</p>
       </div>
       <div
         class="flex flex-col font-normal text-xs leading-5 justify-center whitespace-nowrap text-gray-300 text-right w-32"

@@ -35,7 +35,7 @@
 
 <!-- Tickets Panel - Right Side with Dark Theme -->
 <div
-  class="bg-gray-950 box-border flex flex-col gap-1.5 h-full items-end overflow-auto p-1 relative rounded-lg shrink-0 w-full flex-1"
+  class="bg-gray-950 box-border flex flex-col gap-1.5 h-full items-end overflow-hidden p-1 relative rounded-lg shrink-0 w-full flex-1"
   style="min-height: 600px;"
   dir="rtl"
 >
@@ -77,7 +77,9 @@
 
   <!-- Loading State -->
   {#if loading}
-    <div class="flex flex-col gap-1 items-center justify-center w-full py-2.5">
+    <div
+      class="flex flex-col gap-1 items-center justify-center w-full px-2 py-2.5"
+    >
       <div class="animate-spin">
         <div
           class="w-10 h-10 border-4 border-gray-800 border-t-blue-600 rounded-full"
@@ -89,7 +91,7 @@
 
   <!-- Visit Cards List -->
   {#if !loading && cards.length > 0}
-    <div class="flex flex-col gap-1 w-full">
+    <div class="flex flex-col gap-1 w-full py-5">
       {#each cards as card (card.site_id)}
         <VisitCard
           {card}

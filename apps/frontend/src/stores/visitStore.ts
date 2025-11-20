@@ -1,5 +1,10 @@
 import { writable } from "svelte/store";
 
+// API Configuration
+const API_BASE_URL = "http://localhost:4000";
+const HARDCODED_USERNAME = "shahar";
+const HARDCODED_GROUP = "Weekly Refresh Group";
+
 export interface VisitCard {
   site_id: number;
   site_name: string;
@@ -8,13 +13,7 @@ export interface VisitCard {
   seen_status: "Not Seen" | "Seen" | "Partial";
   seen_date: string;
   geometry: string;
-  updatedStatus:
-    | "Not Seen"
-    | "Partial"
-    | "Completed"
-    | "No Collection"
-    | "Active"
-    | "Awaiting";
+  updatedStatus: "No" | "Partial" | "Full";
   siteLink: string;
 }
 
@@ -34,80 +33,42 @@ function createVisitStore() {
   return {
     subscribe,
 
-    // Async function to load visit cards
+    // Async function to load visit cards from backend
     loadVisitCards: async () => {
       update((state) => ({ ...state, loading: true, error: null }));
 
       try {
-        // Simulate async API call
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const url = new URL(`${API_BASE_URL}/sites`);
+        url.searchParams.append("group", HARDCODED_GROUP);
+        url.searchParams.append("username", HARDCODED_USERNAME);
 
-        const mockData: VisitCard[] = [
-          {
-            site_id: 1,
-            site_name: "ניו יורק",
-            group_id: 1,
-            user_id: 1,
-            seen_status: "Not Seen",
-            seen_date: "2025-11-18T00:00:00",
-            geometry:
-              "POLYGON((-74.3 40.5, -73.9 40.6, -73.7 40.5, -73.8 40.9, -74.2 40.8, -74.3 40.5))",
-            updatedStatus: "Active",
-            siteLink:
-              "https://homevisit.local/project?overlays=1,2,3,4,5,6,7,8",
-          },
-          {
-            site_id: 2,
-            site_name: "תל אביב",
-            group_id: 1,
-            user_id: 1,
-            seen_status: "Partial",
-            seen_date: "2025-11-17T00:00:00",
-            geometry:
-              "POLYGON((34.7 32.0, 34.8 32.1, 34.9 32.0, 34.8 31.9, 34.7 32.0))",
-            updatedStatus: "No Collection",
-            siteLink: "https://homevisit.local/project?overlays=1",
-          },
-          {
-            site_id: 3,
-            site_name: "ירושלים",
-            group_id: 1,
-            user_id: 1,
-            seen_status: "Seen",
-            seen_date: "2025-11-16T00:00:00",
-            geometry:
-              "POLYGON((35.2 31.7, 35.3 31.8, 35.4 31.7, 35.3 31.6, 35.2 31.7))",
-            updatedStatus: "Completed",
-            siteLink: "https://homevisit.local/project?overlays=5,6",
-          },
-          {
-            site_id: 4,
-            site_name: "חיפה",
-            group_id: 1,
-            user_id: 1,
-            seen_status: "Partial",
-            seen_date: "2025-11-15T00:00:00",
-            geometry:
-              "POLYGON((34.9 32.8, 35.0 32.9, 35.1 32.8, 35.0 32.7, 34.9 32.8))",
-            updatedStatus: "Partial",
-            siteLink: "https://homevisit.local/project?overlays=3,4",
-          },
-          {
-            site_id: 5,
-            site_name: "בית שמש",
-            group_id: 1,
-            user_id: 1,
-            seen_status: "Not Seen",
-            seen_date: "2025-11-14T00:00:00",
-            geometry:
-              "POLYGON((35.1 31.8, 35.2 31.9, 35.3 31.8, 35.2 31.7, 35.1 31.8))",
-            updatedStatus: "Awaiting",
-            siteLink: "https://homevisit.local/project?overlays=2,7,8",
-          },
-        ];
+        // Ensure proper URL encoding - replace + with %20 if needed
+        const finalUrl = url.toString().replace(/\+/g, "%20");
+        console.log("Fetching visit cards from URL:", finalUrl);
+
+        const response = await fetch(finalUrl);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const sites = await response.json();
+        console.log("Fetched visit cards data:", sites);
+        // Transform backend data to frontend format
+        const cards: VisitCard[] = sites.map((site: any) => ({
+          site_id: site.site_id,
+          site_name: site.site_name,
+          group_id: site.group_id,
+          user_id: site.user_id,
+          seen_status: site.seen_status,
+          seen_date: site.seen_date,
+          geometry: site.geometry,
+          updatedStatus: site.updatedStatus || "Active",
+          siteLink: site.siteLink || "",
+        }));
 
         set({
-          cards: mockData,
+          cards,
           loading: false,
           error: null,
         });
@@ -121,6 +82,67 @@ function createVisitStore() {
       }
     },
 
+    // Update card status via backend API
+    updateCardStatus: async (
+      siteId: number,
+      newStatus: "Not Seen" | "Seen" | "Partial"
+    ) => {
+      try {
+        // Find the site name from the current cards
+        let siteName = "";
+        update((state) => {
+          const card = state.cards.find((c) => c.site_id === siteId);
+          if (card) {
+            siteName = card.site_name;
+          }
+          return state;
+        });
+
+        if (!siteName) {
+          throw new Error("Site not found");
+        }
+
+        const response = await fetch(
+          `${API_BASE_URL}/sites/${encodeURIComponent(
+            HARDCODED_USERNAME
+          )}/${encodeURIComponent(siteName)}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: newStatus }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // Update local state on successful API call
+        update((state) => ({
+          ...state,
+          cards: state.cards.map((card) =>
+            card.site_id === siteId
+              ? {
+                  ...card,
+                  seen_status: newStatus,
+                  seen_date: new Date().toISOString(),
+                }
+              : card
+          ),
+        }));
+      } catch (error) {
+        // Handle error - could add error state to store if needed
+        console.error("Failed to update card status:", error);
+        update((state) => ({
+          ...state,
+          error:
+            error instanceof Error ? error.message : "Failed to update status",
+        }));
+      }
+    },
+
     // Reset store
     reset: () =>
       set({
@@ -128,6 +150,10 @@ function createVisitStore() {
         loading: false,
         error: null,
       }),
+
+    // Getters for hardcoded constants
+    getUsername: () => HARDCODED_USERNAME,
+    getGroupName: () => HARDCODED_GROUP,
   };
 }
 

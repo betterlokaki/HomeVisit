@@ -10,7 +10,7 @@ import { config } from "./env.js";
 // ============================================================================
 // CORS Configuration
 // ============================================================================
-export const CORS_ORIGINS = [config.CORS_ORIGIN_1, config.CORS_ORIGIN_2];
+export const CORS_ORIGINS = true; // Allow all origins for development
 
 // ============================================================================
 // Server Configuration

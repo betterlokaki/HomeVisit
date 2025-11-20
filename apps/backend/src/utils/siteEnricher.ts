@@ -177,7 +177,9 @@ export function createProjectLink(
     }
 
     // Extract overlay entity IDs
-    const overlayIds = overlays.map((o) => o.exclusive_id.entity_id).join(",");
+    const overlayIds = overlays
+      .map((o) => `\\\\\\${o.exclusive_id.entity_id}\\\\\\`)
+      .join(",");
 
     // Substitute overlayIds into the format string
     return PROJECT_LINK_FORMAT.replace("{overlayIds}", overlayIds);

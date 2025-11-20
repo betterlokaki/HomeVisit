@@ -30,19 +30,17 @@
 
 <!-- Root Container - RTL Layout with Dark Theme -->
 <div
-  class="content-stretch flex gap-[24px] items-stretch justify-end relative size-full min-h-screen w-full bg-black"
+  class="content-stretch flex gap-[4px] items-stretch justify-end relative size-full min-h-screen w-full bg-black"
   dir="rtl"
 >
-  <!-- Tickets Panel (Right) - fixed width -->
-  <div
-    class="bg-gray-950 box-border content-stretch flex flex-col gap-[24px] h-full items-end overflow-clip p-[12px] relative rounded-lg shrink-0 w-[954px]"
-  >
+  <!-- Tickets Panel (Right) - 50% width -->
+  <div class="w-1/2 flex-shrink-0">
     <TicketsPanel cards={cardData} loading={isLoading} />
   </div>
 
-  <!-- Map Container (Left) - flex-1 -->
+  <!-- Map Container (Left) - 50% width -->
   <div
-    class="bg-gray-900 box-border content-stretch flex flex-[1_0_0] flex-col gap-[24px] h-full items-end min-h-px min-w-px overflow-clip p-[12px] relative rounded-lg shrink-0"
+    class="bg-gray-900 box-border content-stretch flex flex-col gap-[24px] h-full items-end min-h-px min-w-px overflow-clip p-[12px] relative rounded-lg w-1/2 flex-shrink-0"
   >
     <MapContainer on:markerClick={async (e) => handleMarkerClick(e.detail)} />
   </div>
