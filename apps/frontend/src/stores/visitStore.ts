@@ -1,21 +1,12 @@
 import { writable } from "svelte/store";
+import type { EnrichedSite } from "@homevisit/common";
 
 // API Configuration
 const API_BASE_URL = "http://localhost:4000";
 const HARDCODED_USERNAME = "shahar";
 const HARDCODED_GROUP = "Weekly Refresh Group";
 
-export interface VisitCard {
-  site_id: number;
-  site_name: string;
-  group_id: number;
-  user_id: number;
-  seen_status: "Not Seen" | "Seen" | "Partial";
-  seen_date: string;
-  geometry: string;
-  updatedStatus: "No" | "Partial" | "Full";
-  siteLink: string;
-}
+export type VisitCard = EnrichedSite;
 
 interface VisitStoreState {
   cards: VisitCard[];
@@ -40,7 +31,7 @@ function createVisitStore() {
       try {
         const url = new URL(`${API_BASE_URL}/sites`);
         url.searchParams.append("group", HARDCODED_GROUP);
-        url.searchParams.append("username", HARDCODED_USERNAME);
+        // url.searchParams.append("username", HARDCODED_USERNAME);
 
         // Ensure proper URL encoding - replace + with %20 if needed
         const finalUrl = url.toString().replace(/\+/g, "%20");
@@ -54,18 +45,7 @@ function createVisitStore() {
 
         const sites = await response.json();
         console.log("Fetched visit cards data:", sites);
-        // Transform backend data to frontend format
-        const cards: VisitCard[] = sites.map((site: any) => ({
-          site_id: site.site_id,
-          site_name: site.site_name,
-          group_id: site.group_id,
-          user_id: site.user_id,
-          seen_status: site.seen_status,
-          seen_date: site.seen_date,
-          geometry: site.geometry,
-          updatedStatus: site.updatedStatus || "Active",
-          siteLink: site.siteLink || "",
-        }));
+        const cards: VisitCard[] = sites;
 
         set({
           cards,

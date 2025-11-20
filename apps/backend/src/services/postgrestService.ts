@@ -143,7 +143,7 @@ class PostgRESTService {
 
   /**
    * Fetch sites by group name with optional username and status filters
-   * Filters sites by group_id and optionally by user_id and seen_status
+   * Filters sites by group_id and optionally by username and seen_status
    */
   async getSites(
     groupName: string,
@@ -160,8 +160,16 @@ class PostgRESTService {
         return [];
       }
 
+      // Fetch all users for this group to create a lookup map
+      const usersResponse = await this.client.get(
+        `/users?group_id=eq.${group.group_id}&select=user_id,username`
+      );
+      const userMap = new Map(
+        (usersResponse.data || []).map((u: any) => [u.user_id, u.username])
+      );
+
       // Build query string to filter sites by group_id
-      let query = `/sites?group_id=eq.${group.group_id}`;
+      let query = `/sites?group_id=eq.${group.group_id}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry`;
 
       // If username provided, get user_id and filter by it
       if (username) {
@@ -186,9 +194,14 @@ class PostgRESTService {
         status,
         count: response.data?.length,
       });
-      // Convert geometry from GeoJSON to WKT format
+      // Convert geometry from GeoJSON to WKT format and map user_id to username
       return (response.data || []).map((site: any) => ({
-        ...site,
+        site_id: site.site_id,
+        site_name: site.site_name,
+        group_id: site.group_id,
+        username: userMap.get(site.user_id) || "",
+        seen_status: site.seen_status,
+        seen_date: site.seen_date,
         geometry: this.geometryToWKT(site.geometry),
       }));
     } catch (error) {

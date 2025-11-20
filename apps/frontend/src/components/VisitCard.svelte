@@ -202,7 +202,7 @@
       <div
         class="flex flex-col font-normal text-xs leading-5 justify-center whitespace-nowrap text-gray-300 text-right w-32"
       >
-        <p>{card.user_id}</p>
+        <p>{card.username}</p>
       </div>
     </div>
 
