@@ -5,7 +5,11 @@
  */
 
 import { Request, Response } from "express";
-import type { GetUserSitesResponse, EnrichedSite } from "@homevisit/common/src";
+import type {
+  GetUserSitesResponse,
+  EnrichedSite,
+  FilterRequest,
+} from "@homevisit/common/src";
 import { postgrestService } from "../services/postgrestService";
 import { logger } from "../middleware/logger";
 import {
@@ -46,7 +50,11 @@ export async function getSites(req: Request, res: Response): Promise<void> {
 
     logger.info("GET /sites called", { groupName, username, status });
 
-    const sites = await postgrestService.getSites(groupName, username, status);
+    const sites = (await postgrestService.getSites(
+      groupName,
+      username,
+      status
+    )) as any[];
     const group = await postgrestService.getGroupByName(groupName);
     const groudRefreshSeconds = group?.data_refreshments || 0;
     const wkt = mergeGeometriesToMultiPolygon(
@@ -56,7 +64,7 @@ export async function getSites(req: Request, res: Response): Promise<void> {
     const startDate = new Date(endDate.getTime() - groudRefreshSeconds * 1000);
     const overlays = await fetchOverlays(wkt, startDate, endDate);
     const enrichedSites = await Promise.all(
-      sites.map(async (site: Site) => ({
+      sites.map(async (site: any) => ({
         ...site,
         updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
         siteLink: createProjectLink(site, overlays),
@@ -100,16 +108,22 @@ export async function updateSiteStatus(
   try {
     const { username, siteName } = req.params;
     console.log(req.body);
-    const { status } = req.body.status;
+
+    let status = req.body;
     console.log(req.body);
     if (!username || !siteName || !status) {
       res.status(400).json({
         [ERROR_FIELD]:
           "Missing required parameters: username, siteName, and status",
       });
+      console.log("Missing required parameters:", {
+        username,
+        siteName,
+        status,
+      });
       return;
     }
-
+    status = status.status;
     // Validate status is one of the allowed values
     const validStatuses = ["Seen", "Partial", "Not Seen"];
     if (!validStatuses.includes(status)) {
@@ -118,6 +132,7 @@ export async function updateSiteStatus(
           ", "
         )}`,
       });
+      console.log("Invalid status provided:", status);
       return;
     }
 
@@ -126,6 +141,7 @@ export async function updateSiteStatus(
       siteName,
       status,
     });
+    console.log("Updating site status with", { username, siteName, status });
 
     const result = await postgrestService.updateSiteStatus(
       username,
@@ -158,5 +174,102 @@ export async function updateSiteStatus(
   } catch (error) {
     logger.error("Error in updateSiteStatus", error);
     res.status(500).json({ [ERROR_FIELD]: "Failed to update site status" });
+  }
+}
+
+/**
+ * POST /sites - Fetch sites by group with advanced filtering
+ * Query params:
+ *   - group: string (required) - group name
+ * Body:
+ *   - username: string (optional) - username filter
+ *   - seenStatuses: string[] (optional) - array of seen_status values to match
+ *   - updatedStatuses: string[] (optional) - array of updatedStatus values to match
+ */
+export async function filterSites(req: Request, res: Response): Promise<void> {
+  try {
+    const groupName = req.query.group as string;
+
+    if (!groupName) {
+      res
+        .status(400)
+        .json({ [ERROR_FIELD]: "Missing required parameter: group" });
+      return;
+    }
+
+    const filterRequest: FilterRequest = req.body;
+    const { username, seenStatuses, updatedStatuses } = filterRequest;
+
+    logger.info("POST /sites called with filters", {
+      groupName,
+      username,
+      seenStatuses,
+      updatedStatuses,
+    });
+
+    // Fetch raw sites from database (no filters yet)
+    const sites = (await postgrestService.getSites(groupName)) as any[];
+    const group = await postgrestService.getGroupByName(groupName);
+    const groudRefreshSeconds = group?.data_refreshments || 0;
+    const wkt = mergeGeometriesToMultiPolygon(
+      sites.map((site) => site.geometry)
+    );
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - groudRefreshSeconds * 1000);
+    const overlays = await fetchOverlays(wkt, startDate, endDate);
+
+    // Enrich all sites with updatedStatus
+    const enrichedSites = await Promise.all(
+      sites.map(async (site: any) => ({
+        ...site,
+        updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
+        siteLink: createProjectLink(site, overlays),
+      }))
+    );
+
+    // Apply filters with AND logic
+    let filteredSites = enrichedSites;
+
+    // Filter by username if provided
+    if (username) {
+      filteredSites = filteredSites.filter(
+        (site: any) => site.username === username
+      );
+    }
+
+    // Filter by seen_status if provided
+    console.log("Filtering by seenStatuses:", seenStatuses);
+
+    if (seenStatuses && seenStatuses.length > 0) {
+      filteredSites = filteredSites.filter((site: any) =>
+        seenStatuses.includes(site.seen_status)
+      );
+    }
+
+    // Filter by updatedStatus if provided
+    if (updatedStatuses && updatedStatuses.length > 0) {
+      filteredSites = filteredSites.filter((site: any) =>
+        updatedStatuses.includes(site.updatedStatus)
+      );
+    }
+
+    logger.info("Successfully filtered sites", {
+      groupName,
+      originalCount: enrichedSites.length,
+      filteredCount: filteredSites.length,
+    });
+
+    const response: any = filteredSites;
+
+    res.json(response);
+  } catch (error) {
+    logger.error("Error in filterSites", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    res.status(500).json({
+      [ERROR_FIELD]: "Failed to filter sites",
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 }

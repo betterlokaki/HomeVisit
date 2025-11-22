@@ -3,7 +3,11 @@
  */
 
 import { Router } from "express";
-import { getSites, updateSiteStatus } from "../controllers/sitesController";
+import {
+  getSites,
+  updateSiteStatus,
+  filterSites,
+} from "../controllers/sitesController";
 
 const router = Router();
 /**
@@ -15,6 +19,18 @@ const router = Router();
  *   - status: string (optional) - filter by status (Seen, Partial, Not Seen)
  */
 router.get("/", getSites);
+
+/**
+ * POST /sites
+ * Get sites by group with advanced filtering (AND logic)
+ * Query params:
+ *   - group: string (required) - group name
+ * Body:
+ *   - username: string (optional) - filter by username
+ *   - seenStatuses: string[] (optional) - array of seen_status values to match
+ *   - updatedStatuses: string[] (optional) - array of updatedStatus values to match
+ */
+router.post("/", filterSites);
 
 /**
  * PUT /sites/:username/:siteName

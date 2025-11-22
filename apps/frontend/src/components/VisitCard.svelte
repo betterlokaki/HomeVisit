@@ -9,6 +9,9 @@
 
   const dispatch = createEventDispatcher();
 
+  // Cast to any to work around type definition mismatches
+  const cardData = card as any;
+
   // Handler for card selection
   function onCardClick() {
     dispatch("select", card.site_id);
@@ -185,7 +188,7 @@
 
     <!-- Site Name -->
     <p class="font-bold text-sm text-white text-right">
-      {card.site_name}
+      {cardData.site_name}
     </p>
   </div>
 
@@ -202,7 +205,7 @@
       <div
         class="flex flex-col font-normal text-xs leading-5 justify-center whitespace-nowrap text-gray-300 text-right w-32"
       >
-        <p>{card.username}</p>
+        <p>{cardData.username}</p>
       </div>
     </div>
 
@@ -216,7 +219,7 @@
       <div
         class="flex flex-col font-normal text-xs leading-5 justify-center whitespace-nowrap text-gray-300 text-right w-32"
       >
-        <p>{formatDate(card.seen_date)}</p>
+        <p>{formatDate(cardData.seen_date)}</p>
       </div>
     </div>
   </div>

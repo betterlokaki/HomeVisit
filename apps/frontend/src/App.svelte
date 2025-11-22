@@ -8,12 +8,20 @@
   import MapContainer from "./components/MapContainer.svelte";
   import TicketsPanel from "./components/TicketsPanel.svelte";
   import { visitStore } from "./stores/visitStore";
+  import { loadFilters } from "./utils/filterStorage";
 
   let cardData: any[] = [];
   let isLoading = false;
 
   onMount(async () => {
-    await visitStore.loadVisitCards();
+    // Load initial filters from localStorage
+    const savedFilters = loadFilters();
+    if (savedFilters) {
+      await visitStore.updateFilters(savedFilters);
+    } else {
+      // Load without filters on first visit
+      await visitStore.loadVisitCards();
+    }
   });
 
   // Subscribe to the visit store

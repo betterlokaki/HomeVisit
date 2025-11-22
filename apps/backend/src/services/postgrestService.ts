@@ -221,20 +221,32 @@ class PostgRESTService {
     try {
       logger.debug("Updating site status", { username, siteName, status });
 
-      // Build query to find site by username and site_name
-      const query = `/sites?users(username)=eq.${username}&site_name=eq.${encodeURIComponent(
+      // First, get the user_id from username
+      const userResponse = await this.client.get(
+        `/users?username=eq.${encodeURIComponent(username)}&select=user_id`
+      );
+
+      if (!userResponse.data || userResponse.data.length === 0) {
+        logger.warn("User not found", { username });
+        return null;
+      }
+
+      const user = userResponse.data[0];
+      const userId = user.user_id;
+
+      // Now fetch the site by user_id and site_name
+      const siteQuery = `/sites?user_id=eq.${userId}&site_name=eq.${encodeURIComponent(
         siteName
-      )}`;
+      )}&select=site_id`;
 
-      // First, fetch the site to ensure it exists
-      const response = await this.client.get(query);
+      const siteResponse = await this.client.get(siteQuery);
 
-      if (!response.data || response.data.length === 0) {
+      if (!siteResponse.data || siteResponse.data.length === 0) {
         logger.warn("Site not found", { username, siteName });
         return null;
       }
 
-      const site = response.data[0];
+      const site = siteResponse.data[0];
 
       // Update the site's seen_status
       const updateResponse = await this.client.patch(

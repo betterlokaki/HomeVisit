@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { writable, get } from "svelte/store";
 import type { EnrichedSite } from "@homevisit/common";
 
 // API Configuration
@@ -8,10 +8,25 @@ const HARDCODED_GROUP = "Weekly Refresh Group";
 
 export type VisitCard = EnrichedSite;
 
+export interface SiteFilters {
+  username: boolean; // Button 1: Filter by current user
+  awaiting: boolean; // Button 2: updatedStatus (Full|Partial) AND seen_status (Not Seen|Partial)
+  collection: boolean; // Button 3: updatedStatus = "No"
+  completedFull: boolean; // Button 4: seen_status = "Seen"
+  completedPartial: boolean; // Button 5: seen_status = "Partial"
+}
+
+export interface FilterRequest {
+  username?: string; // Only included when username filter is active
+  seenStatuses?: string[]; // Array of seen_status values to match
+  updatedStatuses?: string[]; // Array of updatedStatus values to match
+}
+
 interface VisitStoreState {
   cards: VisitCard[];
   loading: boolean;
   error: string | null;
+  filters: SiteFilters;
 }
 
 function createVisitStore() {
@@ -19,9 +34,49 @@ function createVisitStore() {
     cards: [],
     loading: false,
     error: null,
+    filters: {
+      username: false,
+      awaiting: false,
+      collection: false,
+      completedFull: false,
+      completedPartial: false,
+    },
   });
 
-  return {
+  // Helper to build filter request from filters state
+  const buildFilterRequest = (filters: SiteFilters): FilterRequest => {
+    let request: FilterRequest = {};
+
+    // Button 1: Filter by current username
+    if (filters.username) {
+      request.username = HARDCODED_USERNAME;
+    }
+
+    // Button 2: updatedStatus (Full|Partial) AND seen_status (Not Seen|Partial)
+    if (filters.awaiting) {
+      request.updatedStatuses = ["Full", "Partial"];
+      request.seenStatuses = ["Not Seen", "Partial"];
+    }
+
+    // Button 3: updatedStatus = "No"
+    if (filters.collection) {
+      request.updatedStatuses = ["No"];
+    }
+
+    // Button 4: seen_status = "Seen"
+    if (filters.completedFull) {
+      request.seenStatuses = ["Seen"];
+    }
+
+    // Button 5: seen_status = "Partial"
+    if (filters.completedPartial) {
+      request.seenStatuses = ["Partial"];
+    }
+
+    return request;
+  };
+
+  const storeAPI = {
     subscribe,
 
     // Async function to load visit cards from backend
@@ -29,37 +84,57 @@ function createVisitStore() {
       update((state) => ({ ...state, loading: true, error: null }));
 
       try {
+        // Get current state to access filters
+        const currentState = get({ subscribe } as any) as VisitStoreState;
+        const filterRequest = buildFilterRequest(currentState.filters);
+
         const url = new URL(`${API_BASE_URL}/sites`);
         url.searchParams.append("group", HARDCODED_GROUP);
-        // url.searchParams.append("username", HARDCODED_USERNAME);
 
-        // Ensure proper URL encoding - replace + with %20 if needed
+        // Ensure proper URL encoding
         const finalUrl = url.toString().replace(/\+/g, "%20");
-        console.log("Fetching visit cards from URL:", finalUrl);
 
-        const response = await fetch(finalUrl);
+        const response = await fetch(finalUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(filterRequest),
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const sites = await response.json();
-        console.log("Fetched visit cards data:", sites);
         const cards: VisitCard[] = sites;
 
-        set({
+        update((state) => ({
+          ...state,
           cards,
           loading: false,
           error: null,
-        });
+        }));
       } catch (error) {
-        set({
+        update((state) => ({
+          ...state,
           cards: [],
           loading: false,
           error:
             error instanceof Error ? error.message : "Unknown error occurred",
-        });
+        }));
       }
+    },
+
+    // Update filters and reload cards
+    updateFilters: async (newFilters: SiteFilters) => {
+      update((state) => ({
+        ...state,
+        filters: newFilters,
+      }));
+
+      // Reload cards with new filters
+      await storeAPI.loadVisitCards();
     },
 
     // Update card status via backend API
@@ -70,13 +145,11 @@ function createVisitStore() {
       try {
         // Find the site name from the current cards
         let siteName = "";
-        update((state) => {
-          const card = state.cards.find((c) => c.site_id === siteId);
-          if (card) {
-            siteName = card.site_name;
-          }
-          return state;
-        });
+        const state = get({ subscribe } as any) as VisitStoreState;
+        const card = state.cards.find((c: VisitCard) => c.site_id === siteId);
+        if (card) {
+          siteName = (card as any).site_name;
+        }
 
         if (!siteName) {
           throw new Error("Site not found");
@@ -129,12 +202,21 @@ function createVisitStore() {
         cards: [],
         loading: false,
         error: null,
+        filters: {
+          username: false,
+          awaiting: false,
+          collection: false,
+          completedFull: false,
+          completedPartial: false,
+        },
       }),
 
     // Getters for hardcoded constants
     getUsername: () => HARDCODED_USERNAME,
     getGroupName: () => HARDCODED_GROUP,
   };
+
+  return storeAPI;
 }
 
 export const visitStore = createVisitStore();

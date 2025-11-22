@@ -1,12 +1,33 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import VisitCard from "./VisitCard.svelte";
   import type { VisitCard as VisitCardType } from "../stores/visitStore";
+  import type { SiteFilters } from "../stores/visitStore";
+  import { visitStore } from "../stores/visitStore";
+  import { saveFilters, loadFilters } from "../utils/filterStorage";
 
   export let cards: VisitCardType[] = [];
   export let loading: boolean = false;
 
   // Track which card is currently selected
   let selectedCardId: number | null = null;
+
+  // Filter state
+  let filters: SiteFilters = {
+    username: false,
+    awaiting: false,
+    collection: false,
+    completedFull: false,
+    completedPartial: false,
+  };
+
+  // Load filters from localStorage on mount
+  onMount(() => {
+    const saved = loadFilters();
+    if (saved) {
+      filters = saved;
+    }
+  });
 
   // Handler for card selection
   function handleCardSelect(cardId: number) {
@@ -31,6 +52,15 @@
   async function handleReturn(cardId: number) {
     console.log("Clicked: Return for card", cardId);
   }
+
+  // Handle filter toggle
+  async function toggleFilter(filterName: keyof SiteFilters) {
+    filters[filterName] = !filters[filterName];
+    // Save to localStorage
+    saveFilters(filters);
+    // Reload cards with new filters
+    await visitStore.updateFilters(filters);
+  }
 </script>
 
 <!-- Tickets Panel - Right Side with Dark Theme -->
@@ -51,27 +81,66 @@
     </div>
 
     <!-- Filter Section -->
-    <div class="flex gap-1 items-center w-full">
+    <div class="flex gap-1 items-center w-full flex-wrap">
+      <!-- Button 1: Username Filter -->
       <button
-        class="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded text-sm font-semibold transition-colors"
-        >יוזר</button
+        on:click={() => toggleFilter("username")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.username
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
       >
+        יוזר
+      </button>
+
+      <!-- Button 2: Awaiting Filter (updatedStatus Full|Partial AND seen_status Not Seen|Partial) -->
       <button
-        class="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded text-sm font-semibold transition-colors"
-        >מחכה לביקור</button
+        on:click={() => toggleFilter("awaiting")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.awaiting
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
       >
+        מחכה לביקור
+      </button>
+
+      <!-- Button 3: Collection Filter (updatedStatus = "No") -->
       <button
-        class="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded text-sm font-semibold transition-colors"
-        >דרוש לאיסוף</button
+        on:click={() => toggleFilter("collection")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.collection
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
       >
+        דרוש לאיסוף
+      </button>
+
+      <!-- Button 4: Completed Full Filter (seen_status = "Seen") -->
       <button
-        class="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded text-sm font-semibold transition-colors"
-        >בוצע</button
+        on:click={() => toggleFilter("completedFull")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.completedFull
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
       >
+        בוצע
+      </button>
+
+      <!-- Button 5: Completed Partial Filter (seen_status = "Partial") -->
       <button
-        class="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded text-sm font-semibold transition-colors"
-        >בוצע חלקית</button
+        on:click={() => toggleFilter("completedPartial")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.completedPartial
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
       >
+        בוצע חלקית
+      </button>
     </div>
   </div>
 
