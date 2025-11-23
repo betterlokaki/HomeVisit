@@ -172,9 +172,7 @@ function createVisitStore() {
         }
 
         const response = await fetch(
-          `${API_BASE_URL}/sites/${encodeURIComponent(
-            HARDCODED_USERNAME
-          )}/${encodeURIComponent(siteName)}`,
+          `${API_BASE_URL}/sites/${encodeURIComponent(siteName)}`,
           {
             method: "PUT",
             headers: {
@@ -196,7 +194,7 @@ function createVisitStore() {
               ? {
                   ...card,
                   seen_status: newStatus,
-                  seen_date: new Date().toISOString(),
+                  seen_date: new Date().toISOString() as any,
                 }
               : card
           ),

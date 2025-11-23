@@ -8,3 +8,5 @@ export * from "./Group.js";
 export * from "./Overlay.js";
 export * from "./OverlaySearch.js";
 export * from "./FilterConfig.js";
+export * from "./ApiResponse.js";
+export type { FilterRequest, SiteFilters } from "./FilterConfig.js";

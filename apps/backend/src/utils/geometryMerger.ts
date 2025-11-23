@@ -21,20 +21,27 @@ export function mergeGeometriesToMultiPolygon(wktGeometries: string[]): string {
       return "";
     }
 
-    // Parse WKT strings to GeoJSON
+    // Parse WKT strings or handle GeoJSON objects
     const polygons = wktGeometries
-      .filter((wkt) => wkt && wkt.trim().length > 0)
+      .filter(
+        (wkt) => wkt && (typeof wkt === "string" ? wkt.trim().length > 0 : true)
+      )
       .map((wkt) => {
         try {
-          const parsed = parse(wkt);
+          let parsed: any;
+          if (typeof wkt === "string") {
+            parsed = parse(wkt);
+          } else {
+            parsed = wkt;
+          }
           if (!parsed) {
-            logger.warn("Failed to parse WKT", { wkt });
+            logger.warn("Failed to parse geometry", { wkt });
             return null;
           }
           return parsed;
         } catch (error) {
-          logger.error("Error parsing WKT geometry", { wkt, error });
-          return "";
+          logger.error("Error parsing geometry", { wkt, error });
+          return null;
         }
       })
       .filter((geom) => geom !== null);
@@ -51,7 +58,7 @@ export function mergeGeometriesToMultiPolygon(wktGeometries: string[]): string {
           return geom.coordinates;
         }
         logger.warn("Unexpected geometry type, skipping", { type: geom.type });
-        return "";
+        return null;
       })
       .filter((coords) => coords !== null);
 

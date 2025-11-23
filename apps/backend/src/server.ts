@@ -28,7 +28,8 @@ app.use((req, res, next) => {
 });
 
 // Swagger UI
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api-docs", swaggerUi.serve as any);
+app.get("/api-docs", swaggerUi.setup(swaggerSpec) as any);
 
 // Routes
 setupHealthCheck(app);

@@ -35,8 +35,13 @@ export async function calcaulteIntersectionPrecent(
       return "No";
     }
 
-    // Parse site geometry from WKT
-    const siteGeom = wkt.parse(site.geometry as any);
+    // Parse site geometry - handle both GeoJSON objects and WKT strings
+    let siteGeom: any;
+    if (typeof site.geometry === "string") {
+      siteGeom = wkt.parse(site.geometry);
+    } else {
+      siteGeom = site.geometry;
+    }
     if (!siteGeom) {
       logger.warn("Failed to parse site geometry", { geometry: site.geometry });
       return "No";
