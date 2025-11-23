@@ -6,7 +6,8 @@
  */
 
 import { logger } from "../middleware/logger.js";
-import { postgrestService } from "./postgrestService.js";
+import { GroupService } from "./groupService.js";
+import { PostgRESTClient } from "./postgrestClient.js";
 
 interface ScheduledGroup {
   groupId: number;
@@ -17,6 +18,11 @@ interface ScheduledGroup {
 class StatusRefreshScheduler {
   private scheduledGroups: Map<number, ScheduledGroup> = new Map();
   private isRunning = false;
+  private groupService: GroupService;
+
+  constructor() {
+    this.groupService = new GroupService(new PostgRESTClient());
+  }
 
   /**
    * Start the status refresh scheduler
@@ -68,7 +74,7 @@ class StatusRefreshScheduler {
   private async initializeGroupSchedules(): Promise<void> {
     try {
       // Fetch all groups with their refresh intervals
-      const groups = await postgrestService.getAllGroups();
+      const groups = await this.groupService.getAll();
 
       logger.info("Initializing refresh schedules for groups", {
         count: groups.length,
@@ -129,7 +135,7 @@ class StatusRefreshScheduler {
    */
   private async refreshGroupStatuses(groupId: number): Promise<void> {
     try {
-      const refreshedCount = await postgrestService.refreshExpiredStatuses(
+      const refreshedCount = await this.groupService.refreshExpiredStatuses(
         groupId
       );
 

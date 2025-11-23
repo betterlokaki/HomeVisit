@@ -1,160 +1,109 @@
-/**
- * Sites Controller
- *
- * Handles sites endpoints logic.
- */
-
 import { Request, Response } from "express";
-import type { GetUserSitesResponse, EnrichedSite } from "@homevisit/common/src";
-import { postgrestService } from "../services/postgrestService";
-import { logger } from "../middleware/logger";
+import { PostgRESTClient } from "../services/postgrestClient.js";
+import { SiteService } from "../services/siteService.js";
+import { GroupService } from "../services/groupService.js";
+import { EnrichmentService } from "../services/enrichmentService.js";
+import { FilterService } from "../services/filterService.js";
+import type { FilterRequest } from "@homevisit/common";
 import {
-  RESPONSE_SUCCESS_FIELD,
-  RESPONSE_DATA_FIELD,
-  ERROR_FIELD,
-} from "../config/constants";
-import { Site } from "@homevisit/common";
-import { fetchOverlays } from "../services/overlayService";
-import { mergeGeometriesToMultiPolygon } from "../utils/geometryMerger";
-import {
-  calcaulteIntersectionPrecent,
-  createProjectLink,
-  filterOverlaysByIntersection,
-} from "../utils/siteEnricher";
+  sendError,
+  sendValidationError,
+  sendSuccess,
+  sendNotFound,
+} from "../utils/responseHelper.js";
+import { logger } from "../middleware/logger.js";
 
-/**
- * GET /sites - Fetch sites by group with optional username and status filters
- * Query params:
- *   - group: string (required) - group name
- *   - username: string (optional) - username filter
- *   - status: string (optional) - seen_status filter (Seen, Partial, Not Seen)
- */
-export async function getSites(req: Request, res: Response): Promise<void> {
-  try {
-    const groupName = req.query.group as string;
+class SitesController {
+  private siteService: SiteService;
+  private groupService: GroupService;
+  private enrichmentService: EnrichmentService;
+  private filterService: FilterService;
 
-    if (!groupName) {
-      res
-        .status(400)
-        .json({ [ERROR_FIELD]: "Missing required parameter: group" });
-      return;
+  constructor() {
+    const postgrest = new PostgRESTClient();
+    this.siteService = new SiteService(postgrest);
+    this.groupService = new GroupService(postgrest);
+    this.enrichmentService = new EnrichmentService(postgrest);
+    this.filterService = new FilterService();
+  }
+
+  async getSites(req: Request, res: Response): Promise<void> {
+    try {
+      const groupName = req.query.group as string;
+      if (!groupName) {
+        sendValidationError(res, "Missing required parameter: group");
+        return;
+      }
+      const sites = await this.siteService.getSitesByName(groupName);
+      const group = await this.groupService.getByName(groupName);
+      const enriched = await this.enrichmentService.enrichSites(sites, group);
+      logger.info("Sites fetched", { groupName, count: sites.length });
+      sendSuccess(res, enriched);
+    } catch (error) {
+      sendError(res, "Failed to fetch sites", 500, error);
     }
+  }
 
-    const username = req.query.username as string | undefined;
-    const status = req.query.status as string | undefined;
+  async filterSites(req: Request, res: Response): Promise<void> {
+    try {
+      const groupName = req.query.group as string;
+      if (!groupName) {
+        sendValidationError(res, "Missing required parameter: group");
+        return;
+      }
+      const filterRequest: FilterRequest = req.body;
+      logger.debug("Filter request", { groupName, filters: filterRequest });
+      const sites = await this.siteService.getSitesWithFilters(
+        groupName,
+        filterRequest
+      );
+      logger.debug("Filtered sites count", { count: sites.length });
+      const group = await this.groupService.getByName(groupName);
+      if (!group) {
+        logger.error("Group not found", { groupName });
+        sendError(res, "Group not found", 404, null);
+        return;
+      }
+      const enriched = await this.enrichmentService.enrichSites(sites, group);
+      const filtered = this.filterService.applyRuntimeFilters(
+        enriched,
+        filterRequest
+      );
+      logger.info("Sites filtered", { groupName, count: filtered.length });
+      sendSuccess(res, filtered);
+    } catch (error) {
+      logger.error("Filter error", { error });
+      sendError(res, "Failed to filter sites", 500, error);
+    }
+  }
 
-    logger.info("GET /sites called", { groupName, username, status });
-
-    const sites = await postgrestService.getSites(groupName, username, status);
-    const group = await postgrestService.getGroupByName(groupName);
-    const groudRefreshSeconds = group?.data_refreshments || 0;
-    const wkt = mergeGeometriesToMultiPolygon(
-      sites.map((site) => site.geometry)
-    );
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - groudRefreshSeconds * 1000);
-    const overlays = await fetchOverlays(wkt, startDate, endDate);
-    const enrichedSites = await Promise.all(
-      sites.map(async (site: Site) => ({
-        ...site,
-        updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
-        siteLink: createProjectLink(site, overlays),
-      }))
-    );
-
-    logger.info("Successfully fetched sites by group", {
-      groupName,
-      username,
-      status,
-      count: sites.length,
-    });
-
-    const response: any = enrichedSites;
-
-    res.json(response);
-  } catch (error) {
-    logger.error("Error in getSitesByGroup", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    res.status(500).json({
-      [ERROR_FIELD]: "Failed to fetch sites by group",
-      details: error instanceof Error ? error.message : String(error),
-    });
+  async updateSiteStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { siteName } = req.params;
+      const { status } = req.body;
+      if (!siteName || !status) {
+        sendValidationError(res, "Missing required fields");
+        return;
+      }
+      const validStatuses = ["Seen", "Partial", "Not Seen"];
+      if (!validStatuses.includes(status)) {
+        sendValidationError(
+          res,
+          `Invalid status. Must be: ${validStatuses.join(", ")}`
+        );
+        return;
+      }
+      const updated = await this.siteService.updateStatus(siteName, status);
+      if (!updated) {
+        sendNotFound(res, `Site ${siteName}`);
+        return;
+      }
+      logger.info("Site status updated", { siteName, status });
+      sendSuccess(res, { message: "Site status updated successfully" });
+    } catch (error) {
+      sendError(res, "Failed to update site status", 500, error);
+    }
   }
 }
 
-/**
- * PUT /sites/:username/:siteName - Update a site's seen_status
- * Params:
- *   - username: string (required) - username
- *   - siteName: string (required) - site name
- * Body:
- *   - status: string (required) - new seen_status (Seen, Partial, Not Seen)
- */
-export async function updateSiteStatus(
-  req: Request,
-  res: Response
-): Promise<void> {
-  try {
-    const { username, siteName } = req.params;
-    const { status } = req.body;
-
-    if (!username || !siteName || !status) {
-      res.status(400).json({
-        [ERROR_FIELD]:
-          "Missing required parameters: username, siteName, and status",
-      });
-      return;
-    }
-
-    // Validate status is one of the allowed values
-    const validStatuses = ["Seen", "Partial", "Not Seen"];
-    if (!validStatuses.includes(status)) {
-      res.status(400).json({
-        [ERROR_FIELD]: `Invalid status. Must be one of: ${validStatuses.join(
-          ", "
-        )}`,
-      });
-      return;
-    }
-
-    logger.info("PUT /sites/:username/:siteName called", {
-      username,
-      siteName,
-      status,
-    });
-
-    const result = await postgrestService.updateSiteStatus(
-      username,
-      siteName,
-      status
-    );
-
-    if (!result) {
-      res.status(404).json({
-        [ERROR_FIELD]: `Site not found for user ${username} with name ${siteName}`,
-      });
-      return;
-    }
-
-    logger.info("Successfully updated site status", {
-      username,
-      siteName,
-      status,
-    });
-
-    res.json({
-      [RESPONSE_SUCCESS_FIELD]: true,
-      [RESPONSE_DATA_FIELD]: {
-        message: `Site status updated successfully`,
-        username,
-        siteName,
-        status,
-      },
-    });
-  } catch (error) {
-    logger.error("Error in updateSiteStatus", error);
-    res.status(500).json({ [ERROR_FIELD]: "Failed to update site status" });
-  }
-}
+export const sitesController = new SitesController();

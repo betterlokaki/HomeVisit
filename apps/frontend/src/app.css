@@ -1,12 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-* {
-  @apply box-border;
+:root {
+  /* Design Tokens from Figma Variables */
+  --neutral-colorbglayout: #000000;
+  --neutral-colorbgcontainer: #141414;
+  --color-neutral-text-colortext: #ffffffe0;
+  --color-neutral-icons-borders-colorborder: #434343;
+  --color-primary-colorprimary: #1668dc;
+  --color-primary-colorprimarytext: #1668dc;
+  --color-neutral-text-colortextsolid: #ffffff;
+  --color-info-colorinfobg: #111a2c;
+  --color-info-colorinfoborder: #15325b;
+  --color-info-colorinfotext: #1668dc;
+  --color-neutral-background-colorbgfloating: #1f1f1f;
+  --color-error-colorerrorbg: #2a1215;
+  --color-error-colorerrorborder: #58181c;
+  --color-error-colorerrortext: #d32029;
+  --color-warning-colorwarningbg: #2b2111;
+  --color-warning-colorwarningborder: #594214;
+  --color-warning-colorwarningtext: #d89614;
+  --color-neutral-fill-colorfillquaternary: #ffffff05;
+  --primary-irguniot-primary-1: #131c17;
+  
+  /* Spacing */
+  --size-padding-padding: 16px;
+  --size-padding-paddingxs: 8px;
+  --size-padding-paddingsm: 12px;
+  --size-padding-paddingxxs: 4px;
+  
+  /* Border Radius */
+  --style-borderradiuslg: 8px;
+  --style-borderradiussm: 4px;
 }
 
-html,
-body {
-  @apply h-full w-full m-0 p-0 bg-gray-50;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
+
+body {
+  font-family: 'Heebo', sans-serif;
+  background-color: #000000;
+  color: #ffffffe0;
+  direction: rtl;
+}
+

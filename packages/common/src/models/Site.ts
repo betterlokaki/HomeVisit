@@ -9,7 +9,8 @@ export interface Site {
   site_id: number;
   site_name: string;
   group_id: number;
-  user_id: number;
+  username: string;
+  display_name?: string; // Hebrew display name for the user
   seen_status: SeenStatus;
   seen_date: Date;
   geometry: string; // WKT (Well-Known Text) format
@@ -26,7 +27,7 @@ export interface EnrichedSite extends Site {
 export interface GetUserSitesResponse {
   success: boolean;
   data: {
-    user_id: number;
+    username: string;
     sites: EnrichedSite[];
   };
 }

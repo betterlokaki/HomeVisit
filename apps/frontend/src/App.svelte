@@ -1,55 +1,72 @@
+<!-- 
+  LocatX Frame - Site Visit Management Interface
+  Refactored with modular components and proper RTL layout
+-->
+
 <script lang="ts">
-  /**
-   * HomeVisit Main Application
-   * 
-   * Root component that manages routing between auth pages (login/register)
-   * and the main dashboard. Redirects based on authentication state.
-   */
+  import { onMount } from "svelte";
+  import MapContainer from "./components/MapContainer.svelte";
+  import TicketsPanel from "./components/TicketsPanel.svelte";
+  import { visitStore } from "./stores/visitStore";
+  import { loadFilters } from "./utils/filterStorage";
 
-  import { onMount } from 'svelte';
-  import { isAuthenticated, authStore } from './stores/auth';
-  import { sitesStore } from './stores/sites';
-  import Login from './pages/Login.svelte';
-  import Register from './pages/Register.svelte';
-  import Dashboard from './pages/Dashboard.svelte';
+  let cardData: any[] = [];
+  let isLoading = false;
+  let selectedSiteId: number | null = null;
 
-  let currentPage: 'login' | 'register' | 'dashboard' = 'login';
-
-  onMount(() => {
-    // If already authenticated, go to dashboard
-    if ($isAuthenticated && $authStore.userId) {
-      currentPage = 'dashboard';
-      sitesStore.fetchUserSites($authStore.userId);
+  onMount(async () => {
+    // Load initial filters from localStorage
+    const savedFilters = loadFilters();
+    if (savedFilters) {
+      await visitStore.updateFilters(savedFilters);
+    } else {
+      // Load without filters on first visit
+      await visitStore.loadVisitCards();
     }
   });
 
-  // Watch for auth changes
-  $: if ($isAuthenticated && $authStore.userId) {
-    currentPage = 'dashboard';
-    sitesStore.fetchUserSites($authStore.userId);
-  } else if (!$isAuthenticated && currentPage === 'dashboard') {
-    currentPage = 'login';
-  }
-
-  const handleSwitchPage = (page: 'login' | 'register') => {
-    currentPage = page;
-  };
+  // Subscribe to the visit store
+  visitStore.subscribe((state: any) => {
+    cardData = state.cards;
+    isLoading = state.loading;
+  });
 </script>
 
-<div class="app">
-  {#if currentPage === 'login'}
-    <Login on:switchPage={() => handleSwitchPage('register')} />
-  {:else if currentPage === 'register'}
-    <Register on:switchPage={() => handleSwitchPage('login')} />
-  {:else if currentPage === 'dashboard'}
-    <Dashboard />
-  {/if}
+<!-- Root Container - RTL Layout with Dark Theme -->
+<div
+  class="content-stretch flex gap-[4px] items-stretch justify-end relative size-full min-h-screen w-full bg-black"
+  dir="rtl"
+>
+  <!-- Tickets Panel (Right) - 50% width -->
+  <div class="w-1/2 flex-shrink-0">
+    <TicketsPanel
+      cards={cardData}
+      loading={isLoading}
+      on:cardSelect={(e) => (selectedSiteId = e.detail)}
+    />
+  </div>
+
+  <!-- Map Container (Left) - 50% width -->
+  <div
+    class="bg-gray-900 box-border content-stretch flex flex-col gap-[24px] h-full items-end min-h-px min-w-px overflow-clip p-[12px] relative rounded-lg w-1/2 flex-shrink-0"
+  >
+    <MapContainer bind:selectedSiteId />
+  </div>
 </div>
 
 <style>
-  .app {
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
+  @import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap");
+
+  :global(html) {
+    direction: rtl;
+  }
+
+  :global(body) {
+    font-family: "Heebo", sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #000000;
+    color: #ffffffe0;
+    direction: rtl;
   }
 </style>

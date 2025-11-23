@@ -1,18 +1,8 @@
-/**
- * Authentication routes
- */
-
 import { Router } from "express";
-import { loginUser } from "../controllers/authController";
+import { authController } from "../controllers/authController.js";
 
 const router = Router();
 
-/**
- * POST /auth/login
- * Authenticate user and create user record
- * Body:
- *   - group_id: number (optional, defaults to 1)
- */
-router.post("/login", loginUser);
+router.post("/login", (req, res) => authController.login(req, res));
 
 export default router;

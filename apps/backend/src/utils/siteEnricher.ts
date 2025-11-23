@@ -35,8 +35,13 @@ export async function calcaulteIntersectionPrecent(
       return "No";
     }
 
-    // Parse site geometry from WKT
-    const siteGeom = wkt.parse(site.geometry as any);
+    // Parse site geometry - handle both GeoJSON objects and WKT strings
+    let siteGeom: any;
+    if (typeof site.geometry === "string") {
+      siteGeom = wkt.parse(site.geometry);
+    } else {
+      siteGeom = site.geometry;
+    }
     if (!siteGeom) {
       logger.warn("Failed to parse site geometry", { geometry: site.geometry });
       return "No";
@@ -177,7 +182,9 @@ export function createProjectLink(
     }
 
     // Extract overlay entity IDs
-    const overlayIds = overlays.map((o) => o.exclusive_id.entity_id).join(",");
+    const overlayIds = overlays
+      .map((o) => `\\\\\\${o.exclusive_id.entity_id}\\\\\\`)
+      .join(",");
 
     // Substitute overlayIds into the format string
     return PROJECT_LINK_FORMAT.replace("{overlayIds}", overlayIds);

@@ -1,30 +1,12 @@
-/**
- * Sites routes
- */
-
 import { Router } from "express";
-import { getSites, updateSiteStatus } from "../controllers/sitesController";
+import { sitesController } from "../controllers/sitesController.js";
 
 const router = Router();
-/**
- * GET /sites
- * Get sites by group with optional filters
- * Query params:
- *   - group: string (required) - group name
- *   - username: string (optional) - filter by username
- *   - status: string (optional) - filter by status (Seen, Partial, Not Seen)
- */
-router.get("/", getSites);
 
-/**
- * PUT /sites/:username/:siteName
- * Update a site's seen_status
- * Params:
- *   - username: string (required) - username
- *   - siteName: string (required) - site name
- * Body:
- *   - status: string (required) - new seen_status (Seen, Partial, Not Seen)
- */
-router.put("/:username/:siteName", updateSiteStatus);
+router.get("/", (req, res) => sitesController.getSites(req, res));
+router.post("/", (req, res) => sitesController.filterSites(req, res));
+router.put("/:siteName", (req, res) =>
+  sitesController.updateSiteStatus(req, res)
+);
 
 export default router;

@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_id BIGSERIAL PRIMARY KEY,
   group_id BIGINT NOT NULL,
   username VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255) NOT NULL DEFAULT '',
   CONSTRAINT fk_users_group FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE
 );
 
@@ -105,10 +106,10 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 /** Insert sample users - shahar and demo assigned to group_id 1 */
-INSERT INTO users (group_id, username)
+INSERT INTO users (group_id, username, display_name)
 VALUES 
-  (1, 'shahar'),
-  (1, 'demo')
+  (1, 'shahar', 'שחר'),
+  (1, 'demo', 'בדיקה')
 ON CONFLICT DO NOTHING;
 
 /** Insert sample sites - with 6+ point polygons for shahar and demo users */
@@ -301,10 +302,12 @@ RETURNS TABLE (
   group_id BIGINT,
   user_id BIGINT,
   seen_status seen_status,
-  geometry geometry
+  geometry geometry,
+  display_name VARCHAR
 ) LANGUAGE sql STABLE AS $$
-  SELECT s.site_id, s.site_name, s.group_id, s.user_id, s.seen_status, s.geometry
+  SELECT s.site_id, s.site_name, s.group_id, s.user_id, s.seen_status, s.geometry, u.display_name
   FROM sites s
+  JOIN users u ON s.user_id = u.user_id
   WHERE s.user_id = p_user_id
   ORDER BY s.site_name;
 $$;
