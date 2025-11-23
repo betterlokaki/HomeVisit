@@ -153,7 +153,8 @@
       on:click|stopPropagation
     >
       <ActionButtons
-        disabledButton={card.updatedStatus === "Partial" ? "completed" : null}
+        currentStatus={card.seen_status}
+        disabledButton={card.seen_status === "Partial" ? "completed" : null}
         on:completed={handleCompleted}
         on:partiallyCompleted={handlePartiallyCompleted}
         on:notDone={handleNotDone}

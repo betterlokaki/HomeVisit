@@ -2,6 +2,7 @@
   import { createEventDispatcher } from "svelte";
 
   export let disabledButton: string | null = null;
+  export let currentStatus: string = "Not Seen";
 
   const dispatch = createEventDispatcher();
 
@@ -29,6 +30,21 @@
       handler();
     }
   }
+
+  // Get button style based on status
+  function getButtonClass(status: string, isDisabled: boolean) {
+    const isActive = currentStatus === status;
+
+    if (isDisabled) {
+      return "border border-blue-500 bg-gray-600 cursor-not-allowed opacity-50 text-white";
+    }
+
+    if (isActive) {
+      return "border border-blue-500 bg-blue-500 hover:bg-blue-600 text-white";
+    }
+
+    return "border border-blue-500 bg-transparent hover:bg-blue-500/10 text-blue-500 hover:text-white";
+  }
 </script>
 
 <div class="flex gap-2 items-center">
@@ -37,22 +53,27 @@
     on:click={handleCompleted}
     on:keydown={(e) => handleKeyDown(e, handleCompleted)}
     disabled={disabledButton === "completed"}
-    class="border border-green-500 {disabledButton === 'completed'
-      ? 'bg-gray-600 cursor-not-allowed opacity-50'
-      : 'bg-green-500 hover:bg-green-600'} flex items-center justify-center px-4 py-1 rounded-lg transition-colors"
+    class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
+      'Seen',
+      disabledButton === 'completed'
+    )}"
     title={disabledButton === "completed" ? "לא זמין בסטטוס זה" : "בוצע"}
   >
-    <p class="font-normal text-sm text-white text-right leading-5">בוצע</p>
+    <p class="font-normal text-sm text-right leading-5">בוצע</p>
   </button>
 
   <!-- בוצע חלקית (Partially Completed) Button -->
   <button
     on:click={handlePartiallyCompleted}
     on:keydown={(e) => handleKeyDown(e, handlePartiallyCompleted)}
-    class="border border-yellow-500 bg-yellow-500 hover:bg-yellow-600 flex items-center justify-center px-4 py-1 rounded-lg transition-colors"
+    disabled={disabledButton === "partiallyCompleted"}
+    class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
+      'Partial',
+      disabledButton === 'partiallyCompleted'
+    )}"
     title="בוצע חלקית"
   >
-    <p class="font-normal text-sm text-white text-right leading-5">
+    <p class="font-normal text-sm text-right leading-5">
       בוצע חלקית
     </p>
   </button>
@@ -61,9 +82,13 @@
   <button
     on:click={handleNotDone}
     on:keydown={(e) => handleKeyDown(e, handleNotDone)}
-    class="border border-red-500 bg-red-500 hover:bg-red-600 flex items-center justify-center px-4 py-1 rounded-lg transition-colors"
+    disabled={disabledButton === "notDone"}
+    class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
+      'Not Seen',
+      disabledButton === 'notDone'
+    )}"
     title="לא בוצע"
   >
-    <p class="font-normal text-sm text-white text-right leading-5">לא בוצע</p>
+    <p class="font-normal text-sm text-right leading-5">לא בוצע</p>
   </button>
 </div>
