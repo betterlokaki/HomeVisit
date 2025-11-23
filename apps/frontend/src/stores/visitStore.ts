@@ -47,30 +47,46 @@ function createVisitStore() {
   const buildFilterRequest = (filters: SiteFilters): FilterRequest => {
     let request: FilterRequest = {};
 
-    // Button 1: Filter by current username
+    // Button 1: Filter by current username - ONLY if explicitly clicked
     if (filters.username) {
       request.username = HARDCODED_USERNAME;
     }
 
+    // Collect all seenStatuses from active buttons
+    const seenStatusFilters: Set<string> = new Set();
+    const updatedStatusFilters: Set<string> = new Set();
+
     // Button 2: updatedStatus (Full|Partial) AND seen_status (Not Seen|Partial)
     if (filters.awaiting) {
-      request.updatedStatuses = ["Full", "Partial"];
-      request.seenStatuses = ["Not Seen", "Partial"];
+      updatedStatusFilters.add("Full");
+      updatedStatusFilters.add("Partial");
+      seenStatusFilters.add("Not Seen");
+      seenStatusFilters.add("Partial");
     }
 
     // Button 3: updatedStatus = "No"
     if (filters.collection) {
-      request.updatedStatuses = ["No"];
+      updatedStatusFilters.add("No");
     }
 
     // Button 4: seen_status = "Seen"
     if (filters.completedFull) {
-      request.seenStatuses = ["Seen"];
+      seenStatusFilters.add("Seen");
     }
 
     // Button 5: seen_status = "Partial"
     if (filters.completedPartial) {
-      request.seenStatuses = ["Partial"];
+      seenStatusFilters.add("Partial");
+    }
+
+    // Add seenStatuses if any buttons added them
+    if (seenStatusFilters.size > 0) {
+      request.seenStatuses = Array.from(seenStatusFilters);
+    }
+
+    // Add updatedStatuses if any buttons added them
+    if (updatedStatusFilters.size > 0) {
+      request.updatedStatuses = Array.from(updatedStatusFilters);
     }
 
     return request;

@@ -7,7 +7,11 @@
 import { Request, Response } from "express";
 import { postgrestService } from "../services/postgrestService";
 import { logger } from "../middleware/logger";
-import { ERROR_FIELD } from "../config/constants";
+import {
+  sendValidationError,
+  sendSuccess,
+  sendError,
+} from "../utils/responseHelper";
 
 /**
  * POST /auth/login - Authenticate user and get user_id
@@ -19,24 +23,15 @@ export async function loginUser(req: Request, res: Response): Promise<void> {
     const { group_id = 1 } = req.body;
 
     if (typeof group_id !== "number" || group_id <= 0) {
-      res
-        .status(400)
-        .json({ [ERROR_FIELD]: "Invalid group_id: must be a positive number" });
+      sendValidationError(res, "Invalid group_id: must be a positive number");
       return;
     }
 
-    logger.info("POST /auth/login called", { group_id });
-
     const userId = await postgrestService.getOrCreateUser(group_id);
 
-    res.status(200).json({
-      success: true,
-      data: { user_id: userId, group_id },
-    });
+    logger.info("User logged in", { userId, groupId: group_id });
+    sendSuccess(res, { user_id: userId, group_id });
   } catch (error) {
-    logger.error("Authentication failed", { error });
-    res.status(500).json({
-      [ERROR_FIELD]: "Authentication failed",
-    });
+    sendError(res, "Authentication failed", 500, error);
   }
 }

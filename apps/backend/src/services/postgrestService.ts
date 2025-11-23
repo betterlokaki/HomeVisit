@@ -211,57 +211,159 @@ class PostgRESTService {
   }
 
   /**
+   * Fetch sites with advanced filtering at database level
+   * Filters: username (via user_id), seenStatuses, updatedStatuses (requires runtime calculation)
+   */
+  async getSitesWithFilters(
+    groupName: string,
+    filters?: {
+      username?: string;
+      seenStatuses?: string[];
+      updatedStatuses?: string[];
+    }
+  ): Promise<Site[]> {
+    try {
+      logger.debug("Fetching sites with filters", { groupName, filters });
+
+      // Get the group
+      const group = await this.getGroupByName(groupName);
+      if (!group) {
+        logger.warn("Group not found", { groupName });
+        return [];
+      }
+
+      // Build base query
+      let queryParams: string[] = [`group_id=eq.${group.group_id}`];
+
+      logger.debug("Starting query build", {
+        groupId: group.group_id,
+        hasUsernameFilter: !!filters?.username,
+        usernameValue: filters?.username,
+      });
+
+      // Fetch users for username filtering
+      let userIdFilter: number | undefined;
+      if (filters?.username) {
+        logger.debug("Username filter is set, fetching user_id", {
+          username: filters.username,
+        });
+        const userResponse = await this.client.get(
+          `/users?username=eq.${encodeURIComponent(
+            filters.username
+          )}&select=user_id`
+        );
+        if (userResponse.data?.[0]) {
+          userIdFilter = userResponse.data[0].user_id;
+          queryParams.push(`user_id=eq.${userIdFilter}`);
+          logger.debug("Added user_id filter", { userIdFilter });
+        }
+      } else {
+        logger.debug("No username filter - NOT adding user_id to query");
+      }
+
+      // Add seen_status filter if provided - use PostgREST IN operator
+      if (filters?.seenStatuses && filters.seenStatuses.length > 0) {
+        const statusList = filters.seenStatuses.map((s) => `"${s}"`).join(",");
+        queryParams.push(`seen_status=in.(${statusList})`);
+        logger.debug("Added seen_status filter", { statusList });
+      }
+
+      // Build final query
+      const query = `/sites?${queryParams.join(
+        "&"
+      )}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry`;
+
+      logger.debug("PostgREST query for filters", {
+        query,
+        queryParams,
+        hasUsername: !!filters?.username,
+        hasSeenStatuses: !!(
+          filters?.seenStatuses && filters.seenStatuses.length > 0
+        ),
+      });
+      const response = await this.client.get(query);
+      const sites = response.data || [];
+
+      // Count unique users in response
+      const uniqueUsers = new Set(sites.map((s: any) => s.user_id));
+
+      logger.info("Successfully fetched sites with filters", {
+        groupName,
+        filtersApplied: {
+          username: filters?.username,
+          seenStatuses: filters?.seenStatuses,
+        },
+        sitesReturned: sites.length,
+        uniqueUsersInResponse: uniqueUsers.size,
+        userIds: Array.from(uniqueUsers),
+        siteDetails: sites.map((s: any) => ({
+          site_id: s.site_id,
+          user_id: s.user_id,
+          seen_status: s.seen_status,
+        })),
+      });
+
+      // Fetch user map for username resolution
+      const usersResponse = await this.client.get(
+        `/users?group_id=eq.${group.group_id}&select=user_id,username`
+      );
+      const userMap = new Map(
+        (usersResponse.data || []).map((u: any) => [u.user_id, u.username])
+      );
+
+      return (sites as any[]).map((site: any) => ({
+        site_id: site.site_id,
+        site_name: site.site_name,
+        group_id: site.group_id,
+        username: userMap.get(site.user_id) || "",
+        seen_status: site.seen_status,
+        seen_date: site.seen_date,
+        geometry: this.geometryToWKT(site.geometry),
+      })) as any;
+    } catch (error) {
+      logger.error("Failed to fetch sites with filters", error);
+      throw error;
+    }
+  }
+
+  /**
    * Update a site's seen_status by username and site name
    */
   async updateSiteStatus(
     username: string,
     siteName: string,
     status: string
-  ): Promise<any> {
+  ): Promise<boolean> {
     try {
-      logger.debug("Updating site status", { username, siteName, status });
-
-      // First, get the user_id from username
-      const userResponse = await this.client.get(
-        `/users?username=eq.${encodeURIComponent(username)}&select=user_id`
-      );
-
-      if (!userResponse.data || userResponse.data.length === 0) {
-        logger.warn("User not found", { username });
-        return null;
-      }
-
-      const user = userResponse.data[0];
-      const userId = user.user_id;
-
-      // Now fetch the site by user_id and site_name
-      const siteQuery = `/sites?user_id=eq.${userId}&site_name=eq.${encodeURIComponent(
-        siteName
-      )}&select=site_id`;
-
-      const siteResponse = await this.client.get(siteQuery);
-
-      if (!siteResponse.data || siteResponse.data.length === 0) {
-        logger.warn("Site not found", { username, siteName });
-        return null;
-      }
-
-      const site = siteResponse.data[0];
-
-      // Update the site's seen_status
-      const updateResponse = await this.client.patch(
-        `/sites?site_id=eq.${site.site_id}`,
-        { seen_status: status }
-      );
-
-      logger.info("Successfully updated site status", {
-        username,
+      logger.debug("Updating site status", {
         siteName,
         status,
-        siteId: site.site_id,
+        updatedByUser: username,
       });
 
-      return updateResponse.data;
+      // Get site by site_name only (ANY user can update ANY site)
+      const siteResponse = await this.client.get(
+        `/sites?site_name=eq.${encodeURIComponent(siteName)}&select=site_id`
+      );
+
+      if (!siteResponse.data?.[0]) {
+        logger.warn("Site not found for update", { siteName });
+        return false;
+      }
+
+      const siteId = siteResponse.data[0].site_id;
+
+      // Update the site's seen_status (any user can update any site)
+      await this.client.patch(`/sites?site_id=eq.${siteId}`, {
+        seen_status: status,
+      });
+
+      logger.info("Site status updated", {
+        siteName,
+        status,
+        updatedByUser: username,
+      });
+      return true;
     } catch (error) {
       logger.error("Failed to update site status", error);
       throw error;
