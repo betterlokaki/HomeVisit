@@ -10,6 +10,7 @@ export interface Site {
   site_name: string;
   group_id: number;
   username: string;
+  display_name?: string; // Hebrew display name for the user
   seen_status: SeenStatus;
   seen_date: Date;
   geometry: string; // WKT (Well-Known Text) format

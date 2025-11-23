@@ -1,185 +1,284 @@
 <script lang="ts">
-  import { getImageUrl } from "../utils/imageMapper";
+  import { onMount } from "svelte";
+  import maplibregl from "maplibre-gl";
+  import "maplibre-gl/dist/maplibre-gl.css";
+  import type { VisitCard } from "../stores/visitStore";
+  import { visitStore } from "../stores/visitStore";
+  import { MAP_CONFIG } from "../config/mapConfig";
+  import {
+    wktToGeoJSON,
+    getPolygonColor,
+    getConvexHullBounds,
+  } from "../utils/mapUtils";
 
-  // Image assets from Figma - converted to local paths
-  const imgMap = getImageUrl(
-    "https://www.figma.com/api/mcp/asset/1ede7ea0-7e0c-4915-bb90-bb9a4bcc49e5"
-  );
+  export let selectedSiteId: number | null = null;
 
-  export let onMarkerClick: (markerId: string) => Promise<void> = async () =>
-    console.log("Marker clicked");
+  let mapContainer: HTMLDivElement;
+  let map: maplibregl.Map | null = null;
+  let cards: VisitCard[] = [];
+  let mapLoaded = false;
 
-  function handleKeyDown(event: KeyboardEvent, handler: () => void) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handler();
+  onMount(() => {
+    // Initialize map
+    if (!mapContainer) return;
+
+    map = new maplibregl.Map({
+      container: mapContainer,
+      style: MAP_CONFIG.styleUrl,
+      center: MAP_CONFIG.defaultCenter as [number, number],
+      zoom: MAP_CONFIG.defaultZoom,
+    });
+
+    map.on("load", () => {
+      mapLoaded = true;
+      console.log("Map loaded. Cards available:", cards.length);
+      if (cards.length > 0) {
+        updateMapLayers(cards);
+        fitToAllSites();
+      }
+    });
+
+    map.on("error", (e) => {
+      console.error("Map error:", e);
+    });
+
+    // Subscribe to visit store to get cards
+    const unsubscribe = visitStore.subscribe((state) => {
+      cards = state.cards;
+      console.log("Cards updated:", cards.length, cards);
+      if (map && mapLoaded) {
+        console.log("Updating map layers with", cards.length, "cards");
+        updateMapLayers(cards);
+        if (cards.length > 0) {
+          fitToAllSites();
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      map?.remove();
+    };
+  });
+
+  /**
+   * Update map layers with current cards
+   */
+  function updateMapLayers(cardsToRender: VisitCard[]) {
+    if (!map) return;
+
+    console.log("updateMapLayers called with", cardsToRender.length, "cards");
+
+    // Clear existing layers and sources
+    try {
+      // Get all layers and remove site-related ones
+      const allLayers = map!.getStyle().layers || [];
+      for (const layer of allLayers) {
+        if (layer.id.startsWith("site-")) {
+          console.log("Removing layer:", layer.id);
+          map!.removeLayer(layer.id);
+        }
+      }
+
+      // Get all sources and remove site-related ones
+      const allSources = map!.getStyle().sources || {};
+      for (const sourceId of Object.keys(allSources)) {
+        if (sourceId.startsWith("site-source-")) {
+          console.log("Removing source:", sourceId);
+          map!.removeSource(sourceId);
+        }
+      }
+    } catch (e) {
+      console.warn("Error clearing existing layers:", e);
+    }
+
+    // Add new layers
+    cardsToRender.forEach((card) => {
+      try {
+        console.log("Adding layer for site:", card.site_id, card.geometry);
+
+        // Parse WKT geometry string
+        const geoJSON = wktToGeoJSON(card.geometry, {
+          site_id: card.site_id,
+          site_name: card.site_name,
+        });
+
+        const layerId = `site-${card.site_id}`;
+        const sourceId = `site-source-${card.site_id}`;
+        const colors = getPolygonColor(card.updatedStatus);
+
+        console.log("Colors for", card.site_id, ":", colors);
+        console.log("GeoJSON:", geoJSON);
+
+        // Add source
+        map!.addSource(sourceId, {
+          type: "geojson",
+          data: geoJSON as any,
+        });
+
+        // Add fill layer
+        map!.addLayer({
+          id: `${layerId}-fill`,
+          type: "fill",
+          source: sourceId,
+          paint: {
+            "fill-color": colors.fill,
+            "fill-opacity": colors.fillOpacity,
+          },
+        });
+
+        // Add stroke layer (on top of fill)
+        map!.addLayer({
+          id: layerId,
+          type: "line",
+          source: sourceId,
+          paint: {
+            "line-color": colors.stroke,
+            "line-width": 3,
+          },
+        });
+
+        // Add click handler to BOTH fill and stroke layers
+        const clickHandler = () => {
+          console.log("Clicked on site:", card.site_id);
+          flyToSite(card);
+          // Also dispatch event for card selection
+          selectedSiteId = card.site_id;
+        };
+
+        map!.on("click", layerId, clickHandler);
+        map!.on("click", `${layerId}-fill`, clickHandler);
+
+        // Change cursor on hover - for both layers
+        const enterHandler = () => {
+          if (map) map.getCanvas().style.cursor = "pointer";
+        };
+        const leaveHandler = () => {
+          if (map) map.getCanvas().style.cursor = "";
+        };
+
+        map!.on("mouseenter", layerId, enterHandler);
+        map!.on("mouseleave", layerId, leaveHandler);
+        map!.on("mouseenter", `${layerId}-fill`, enterHandler);
+        map!.on("mouseleave", `${layerId}-fill`, leaveHandler);
+      } catch (error) {
+        console.error(
+          `Failed to render polygon for site ${card.site_id}:`,
+          error
+        );
+      }
+    });
+  }
+
+  /**
+   * Fly to a specific site with animation
+   */
+  function flyToSite(card: VisitCard) {
+    if (!map) return;
+
+    try {
+      // Geometry is always WKT string from backend
+      const geoJSON = wktToGeoJSON(card.geometry);
+      const coords = geoJSON.geometry.coordinates[0] as Array<[number, number]>;
+
+      // Calculate bounds of this polygon
+      let minLng = coords[0][0];
+      let maxLng = coords[0][0];
+      let minLat = coords[0][1];
+      let maxLat = coords[0][1];
+
+      for (const [lng, lat] of coords) {
+        minLng = Math.min(minLng, lng);
+        maxLng = Math.max(maxLng, lng);
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+      }
+
+      // Fit map to show the entire polygon with padding
+      const padding = 50; // padding in pixels
+      map.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
+        {
+          padding: padding,
+          duration: MAP_CONFIG.flyDuration,
+          maxZoom: 16,
+        }
+      );
+    } catch (error) {
+      console.error("Failed to fly to site:", error);
+    }
+  }
+
+  /**
+   * Fit map to all sites (ConvexHull bounds)
+   */
+  function fitToAllSites() {
+    if (!map || cards.length === 0) return;
+
+    const bounds = getConvexHullBounds(cards);
+    if (!bounds) return;
+
+    const [minLng, minLat, maxLng, maxLat] = bounds;
+
+    // Add padding
+    const padding = 0.05;
+    const paddingLng = (maxLng - minLng) * padding;
+    const paddingLat = (maxLat - minLat) * padding;
+
+    map.fitBounds(
+      [
+        [minLng - paddingLng, minLat - paddingLat],
+        [maxLng + paddingLng, maxLat + paddingLat],
+      ],
+      { duration: 1000 }
+    );
+  }
+
+  // Watch for selected site changes from card clicks
+  $: if (selectedSiteId !== null && map) {
+    const selectedCard = cards.find((c) => c.site_id === selectedSiteId);
+    if (selectedCard) {
+      flyToSite(selectedCard);
     }
   }
 </script>
 
-<!-- Map Container - Dark theme -->
+<!-- Map Container -->
 <div
   class="bg-gray-900 flex flex-col h-full items-end overflow-hidden relative rounded-lg shrink-0 w-full"
-  style="min-height: 600px;"
+  style="min-height: 600px; position: relative;"
 >
-  <!-- Map Image Container -->
+  <!-- MapLibre GL Container -->
   <div
-    class="relative shrink-0 w-full flex-1 overflow-hidden"
-    data-name="Map Image"
-  >
-    <div
-      aria-hidden="true"
-      class="absolute inset-0 pointer-events-none bg-opacity-20 bg-black"
-    >
-      <img
-        alt="map"
-        class="absolute max-w-none object-cover size-full"
-        src={imgMap}
-      />
-    </div>
-
-    <!-- Map Markers - positioned absolutely within map container -->
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 60%; top: 15%;"
-      on:click={() => onMarkerClick("marker-1")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-1"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 1"
-    >
-      <div class="absolute inset-0 bg-red-500 rounded-full opacity-70" />
-    </div>
-
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 65%; top: 15%;"
-      on:click={() => onMarkerClick("marker-2")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-2"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 2"
-    >
-      <div class="absolute inset-0 bg-blue-500 rounded-full opacity-70" />
-    </div>
-
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 70%; top: 15%;"
-      on:click={() => onMarkerClick("marker-3")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-3"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 3"
-    >
-      <img
-        alt="marker 3"
-        class="block max-w-none size-full rounded-full"
-        src={getImageUrl(
-          "https://www.figma.com/api/mcp/asset/03550ac2-1210-439a-bf0d-b82a96307284"
-        )}
-      />
-    </div>
-
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 68%; top: 25%;"
-      on:click={() => onMarkerClick("marker-4")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-4"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 4"
-    >
-      <div class="absolute inset-0 bg-green-500 rounded-full opacity-70" />
-    </div>
-
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 58%; top: 22%;"
-      on:click={() => onMarkerClick("marker-5")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-5"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 5"
-    >
-      <img
-        alt="marker 5"
-        class="block max-w-none size-full rounded-full"
-        src={getImageUrl(
-          "https://www.figma.com/api/mcp/asset/d921f7b1-3642-4aa1-a761-1202cc99ce83"
-        )}
-      />
-    </div>
-
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 75%; top: 27%;"
-      on:click={() => onMarkerClick("marker-6")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-6"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 6"
-    >
-      <div class="absolute inset-0 bg-yellow-500 rounded-full opacity-70" />
-    </div>
-
-    <div
-      class="absolute w-2 h-2 cursor-pointer hover:scale-125 transition-transform"
-      style="left: 58%; top: 40%;"
-      on:click={() => onMarkerClick("marker-7")}
-      on:keydown={(e) => handleKeyDown(e, () => onMarkerClick("marker-7"))}
-      role="button"
-      tabindex="0"
-      aria-label="Marker 7"
-    >
-      <div class="absolute inset-0 bg-purple-500 rounded-full opacity-70" />
-    </div>
-
-    <!-- Map Pin - Active Site Indicator -->
-    <div
-      class="absolute w-1.5 h-1.5"
-      style="left: 70%; top: 43%;"
-      data-name="map-pin"
-    />
-
-    <!-- Map Legend Labels -->
-    <p
-      class="absolute font-bold leading-tight text-sm text-right text-white pointer-events-none"
-      style="right: 5%; top: 2%;"
-      dir="auto"
-    >
-      הובר
-    </p>
-    <p
-      class="absolute font-bold leading-tight text-sm text-right text-white pointer-events-none"
-      style="right: 8%; top: 2%;"
-      dir="auto"
-    >
-      לחוץ
-    </p>
-    <p
-      class="absolute font-bold leading-tight text-sm text-right text-white pointer-events-none"
-      style="right: 15%; top: 2%;"
-      dir="auto"
-    >
-      רגיל
-    </p>
-  </div>
-
-  <!-- Scroll Indicator -->
-  <div class="w-0.5 h-12 relative shrink-0">
-    <img
-      alt="scroll"
-      class="block max-w-none size-full"
-      src={getImageUrl(
-        "https://www.figma.com/api/mcp/asset/15a8cdde-bd45-46bd-9a6a-4a443c719b15"
-      )}
-    />
-  </div>
+    bind:this={mapContainer}
+    class="w-full h-full rounded-lg"
+    style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"
+  />
 </div>
 
 <style>
-  div {
-    direction: rtl;
+  :global(.maplibregl-canvas) {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  :global(.maplibregl-ctrl-bottom-left) {
+    display: none;
+  }
+
+  :global(.maplibregl-ctrl-bottom-right) {
+    display: none;
+  }
+
+  :global(.maplibregl-ctrl-top-left) {
+    display: none;
+  }
+
+  :global(.maplibregl-ctrl-top-right) {
+    display: none;
   }
 </style>

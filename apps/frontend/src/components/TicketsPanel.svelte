@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import VisitCard from "./VisitCard.svelte";
   import type { VisitCard as VisitCardType } from "../stores/visitStore";
   import type { SiteFilters } from "../stores/visitStore";
@@ -8,6 +8,8 @@
 
   export let cards: VisitCardType[] = [];
   export let loading: boolean = false;
+
+  const dispatch = createEventDispatcher();
 
   // Track which card is currently selected
   let selectedCardId: number | null = null;
@@ -33,6 +35,9 @@
   function handleCardSelect(cardId: number) {
     // Toggle selection: if same card is clicked, deselect it; otherwise select the new card
     selectedCardId = selectedCardId === cardId ? null : cardId;
+    if (selectedCardId !== null) {
+      dispatch("cardSelect", selectedCardId);
+    }
     console.log("Card selected:", cardId);
   }
 

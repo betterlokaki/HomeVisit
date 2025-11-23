@@ -1,9 +1,20 @@
 import type { Site, SeenStatus } from "@homevisit/common";
 import { PostgRESTClient } from "./postgrestClient.js";
 import { logger } from "../middleware/logger.js";
+import { normalizeGeometryToWkt } from "../utils/geojsonToWkt.js";
 
 export class SiteService {
   constructor(private postgrest: PostgRESTClient) {}
+
+  private convertToWkt(geometry: any): string {
+    try {
+      return normalizeGeometryToWkt(geometry);
+    } catch (error) {
+      logger.warn("Failed to convert geometry to WKT", { geometry, error });
+      // Return empty polygon if conversion fails
+      return "POLYGON((0 0, 0 0, 0 0, 0 0))";
+    }
+  }
 
   private async getGroupId(groupName: string): Promise<number | null> {
     const resp = await this.postgrest.get<{ group_id: number }>(
@@ -35,7 +46,7 @@ export class SiteService {
       filters.push(`seen_status=in.(${list})`);
     }
     const query = filters.join("&");
-    return `/sites?${query}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username)`;
+    return `/sites?${query}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)`;
   }
 
   async getSitesByGroup(groupId: number): Promise<Site[]> {
@@ -46,20 +57,21 @@ export class SiteService {
       user_id: number;
       seen_status: string;
       seen_date: string;
-      geometry: string;
-      users: { username: string };
+      geometry: any;
+      users: { username: string; display_name: string };
     }
     const resp = await this.postgrest.get<SiteWithUsers>(
-      `/sites?group_id=eq.${groupId}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username)`
+      `/sites?group_id=eq.${groupId}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)`
     );
     return resp.data.map((s) => ({
       site_id: s.site_id,
       site_name: s.site_name,
       group_id: s.group_id,
       username: s.users.username,
+      display_name: s.users.display_name,
       seen_status: s.seen_status as any,
       seen_date: new Date(s.seen_date),
-      geometry: s.geometry,
+      geometry: this.convertToWkt(s.geometry),
     }));
   }
 
@@ -80,7 +92,7 @@ export class SiteService {
       seen_status: string;
       seen_date: string;
       geometry: string;
-      users: { username: string };
+      users: { username: string; display_name: string };
     }
     const groupId = await this.getGroupId(groupName);
     if (!groupId) return [];
@@ -100,9 +112,10 @@ export class SiteService {
       site_name: s.site_name,
       group_id: s.group_id,
       username: s.users.username,
+      display_name: s.users.display_name,
       seen_status: s.seen_status as any,
       seen_date: new Date(s.seen_date),
-      geometry: s.geometry,
+      geometry: this.convertToWkt(s.geometry),
     }));
   }
 
@@ -115,12 +128,12 @@ export class SiteService {
       seen_status: string;
       seen_date: string;
       geometry: string;
-      users: { username: string };
+      users: { username: string; display_name: string };
     }
     const resp = await this.postgrest.get<SiteWithUsers>(
       `/sites?site_name=eq.${encodeURIComponent(
         siteName
-      )}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username)&limit=1`
+      )}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)&limit=1`
     );
     const s = resp.data?.[0];
     if (!s) return null;
@@ -129,9 +142,10 @@ export class SiteService {
       site_name: s.site_name,
       group_id: s.group_id,
       username: s.users.username,
+      display_name: s.users.display_name,
       seen_status: s.seen_status as any,
       seen_date: new Date(s.seen_date),
-      geometry: s.geometry,
+      geometry: this.convertToWkt(s.geometry),
     };
   }
 
