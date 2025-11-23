@@ -73,9 +73,7 @@
     )}"
     title="בוצע חלקית"
   >
-    <p class="font-normal text-sm text-right leading-5">
-      בוצע חלקית
-    </p>
+    <p class="font-normal text-sm text-right leading-5">בוצע חלקית</p>
   </button>
 
   <!-- לא בוצע (Not done) Button -->
