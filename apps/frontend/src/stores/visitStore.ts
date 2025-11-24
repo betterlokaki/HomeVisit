@@ -4,7 +4,7 @@ import { API_CONFIG } from "../config/env";
 
 // API Configuration
 const API_BASE_URL = API_CONFIG.baseUrl;
-const HARDCODED_GROUP = "Weekly Refresh Group";
+let currentGroup = "Weekly Refresh Group"; // Default group
 
 export type VisitCard = EnrichedSite;
 
@@ -107,7 +107,7 @@ function createVisitStore() {
         const filterRequest = buildFilterRequest(currentState.filters);
 
         const url = new URL(`${API_BASE_URL}/sites`);
-        url.searchParams.append("group", HARDCODED_GROUP);
+        url.searchParams.append("group", currentGroup);
 
         // Ensure proper URL encoding
         const finalUrl = url.toString().replace(/\+/g, "%20");
@@ -232,7 +232,7 @@ function createVisitStore() {
     loadGroupUsers: async () => {
       try {
         const url = `${API_BASE_URL}/sites/group/users?group=${encodeURIComponent(
-          HARDCODED_GROUP
+          currentGroup
         )}`;
         console.log("Fetching users from:", url);
         const response = await fetch(url);
@@ -255,8 +255,13 @@ function createVisitStore() {
       }
     },
 
+    // Set the current group
+    setGroup: (groupName: string) => {
+      currentGroup = groupName;
+    },
+
     // Getter for group name
-    getGroupName: () => HARDCODED_GROUP,
+    getGroupName: () => currentGroup,
   };
 
   return storeAPI;

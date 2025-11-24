@@ -122,6 +122,16 @@ class SitesController {
       sendError(res, "Failed to fetch group users", 500, error);
     }
   }
+
+  async getAllGroups(req: Request, res: Response): Promise<void> {
+    try {
+      const groups = await this.groupService.getAll();
+      logger.info("All groups fetched", { count: groups.length });
+      sendSuccess(res, { groups });
+    } catch (error) {
+      sendError(res, "Failed to fetch groups", 500, error);
+    }
+  }
 }
 
 export const sitesController = new SitesController();
