@@ -41,7 +41,7 @@ setupErrorHandlers(app);
 
 // Start server
 const PORT = config.PORT;
-app.listen(PORT, async () => {
+app.listen(PORT, "0.0.0.0", async () => {
   logger.info(`🚀 Backend server started`, {
     port: PORT,
     environment: config.NODE_ENV,

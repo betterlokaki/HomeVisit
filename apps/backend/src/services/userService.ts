@@ -47,4 +47,31 @@ export class UserService {
       throw error;
     }
   }
+
+  async getUsersByGroupName(groupName: string): Promise<User[]> {
+    try {
+      // First get the group ID by name
+      const groupResponse = await this.postgrest.get<{ group_id: number }>(
+        `/groups?group_name=eq.${encodeURIComponent(
+          groupName
+        )}&select=group_id&limit=1`
+      );
+
+      if (!groupResponse.data?.[0]) {
+        logger.warn("Group not found", { groupName });
+        return [];
+      }
+
+      const groupId = groupResponse.data[0].group_id;
+
+      // Then fetch users for that group
+      const response = await this.postgrest.get<User>(
+        `/users?group_id=eq.${groupId}&select=user_id,group_id,username,display_name`
+      );
+      return response.data || [];
+    } catch (error) {
+      logger.error("Failed to get users by group name", { groupName, error });
+      throw error;
+    }
+  }
 }

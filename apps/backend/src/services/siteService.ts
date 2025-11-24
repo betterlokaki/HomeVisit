@@ -36,11 +36,14 @@ export class SiteService {
 
   private buildQuery(
     groupId: number,
-    userId?: number,
+    userIds?: number[],
     seenStatuses?: string[]
   ): string {
     const filters = [`group_id=eq.${groupId}`];
-    if (userId) filters.push(`user_id=eq.${userId}`);
+    if (userIds?.length) {
+      const list = userIds.join(",");
+      filters.push(`user_id=in.(${list})`);
+    }
     if (seenStatuses?.length) {
       const list = seenStatuses.map((s) => `"${s}"`).join(",");
       filters.push(`seen_status=in.(${list})`);
@@ -96,16 +99,16 @@ export class SiteService {
     }
     const groupId = await this.getGroupId(groupName);
     if (!groupId) return [];
-    let userId: number | null = null;
-    if (filterRequest.username) {
-      userId = await this.getUserId(filterRequest.username);
-      if (!userId) return [];
+    let userIds: number[] | undefined;
+    if (filterRequest.usernames && filterRequest.usernames.length > 0) {
+      userIds = [];
+      for (const username of filterRequest.usernames) {
+        const userId = await this.getUserId(username);
+        if (userId) userIds.push(userId);
+      }
+      if (userIds.length === 0) return [];
     }
-    const query = this.buildQuery(
-      groupId,
-      userId || undefined,
-      filterRequest.seenStatuses
-    );
+    const query = this.buildQuery(groupId, userIds, filterRequest.seenStatuses);
     const resp = await this.postgrest.get<SiteWithUsers>(query);
     return resp.data.map((s) => ({
       site_id: s.site_id,

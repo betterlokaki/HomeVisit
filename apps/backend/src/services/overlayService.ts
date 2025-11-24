@@ -5,6 +5,7 @@ import {
   ELASTIC_PROVIDER_BASE_URL,
   ELASTIC_PROVIDER_ENDPOINT,
 } from "../config/constants.js";
+import { config } from "../config/env.js";
 
 function createSearchFilter(wkt: string, start: Date, end: Date): FilterSchema {
   return {
@@ -52,8 +53,26 @@ async function searchOverlays(
 ): Promise<ElasticProviderOverlay[]> {
   try {
     // Implementation for searching overlays using the provided filter schema
-    const url = `${ELASTIC_PROVIDER_BASE_URL}${ELASTIC_PROVIDER_ENDPOINT}`;
-    const response = await axios.post(url, params);
+    let url = `${ELASTIC_PROVIDER_BASE_URL}${ELASTIC_PROVIDER_ENDPOINT}`;
+
+    // Append query parameters if provided
+    if (config.OVERLAY_SERVICE_QUERY_PARAMS) {
+      url += `?${config.OVERLAY_SERVICE_QUERY_PARAMS}`;
+    }
+
+    // Parse headers from env (JSON string)
+    let headers: Record<string, string> = {};
+    if (config.OVERLAY_SERVICE_HEADERS) {
+      try {
+        headers = JSON.parse(config.OVERLAY_SERVICE_HEADERS);
+      } catch {
+        console.warn(
+          "Failed to parse OVERLAY_SERVICE_HEADERS, using empty headers"
+        );
+      }
+    }
+
+    const response = await axios.post(url, params, { headers });
 
     // Convert response to ElasticProviderOverlay[]
     const overlays: ElasticProviderOverlay[] = response.data || [];

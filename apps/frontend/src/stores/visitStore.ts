@@ -1,15 +1,15 @@
 import { writable, get } from "svelte/store";
-import type { EnrichedSite } from "@homevisit/common";
+import type { EnrichedSite, User } from "@homevisit/common";
+import { API_CONFIG } from "../config/env";
 
 // API Configuration
-const API_BASE_URL = "http://localhost:4000";
-const HARDCODED_USERNAME = "shahar";
+const API_BASE_URL = API_CONFIG.baseUrl;
 const HARDCODED_GROUP = "Weekly Refresh Group";
 
 export type VisitCard = EnrichedSite;
 
 export interface SiteFilters {
-  username: boolean; // Button 1: Filter by current user
+  selectedUsers: string[]; // Array of selected usernames
   awaiting: boolean; // Button 2: updatedStatus (Full|Partial) AND seen_status (Not Seen|Partial)
   collection: boolean; // Button 3: updatedStatus = "No"
   completedFull: boolean; // Button 4: seen_status = "Seen"
@@ -17,7 +17,7 @@ export interface SiteFilters {
 }
 
 export interface FilterRequest {
-  username?: string; // Only included when username filter is active
+  usernames?: string[]; // Array of selected usernames
   seenStatuses?: string[]; // Array of seen_status values to match
   updatedStatuses?: string[]; // Array of updatedStatus values to match
 }
@@ -27,6 +27,7 @@ interface VisitStoreState {
   loading: boolean;
   error: string | null;
   filters: SiteFilters;
+  groupUsers: User[];
 }
 
 function createVisitStore() {
@@ -35,21 +36,22 @@ function createVisitStore() {
     loading: false,
     error: null,
     filters: {
-      username: false,
+      selectedUsers: [],
       awaiting: false,
       collection: false,
       completedFull: false,
       completedPartial: false,
     },
+    groupUsers: [],
   });
 
   // Helper to build filter request from filters state
   const buildFilterRequest = (filters: SiteFilters): FilterRequest => {
     let request: FilterRequest = {};
 
-    // Button 1: Filter by current username - ONLY if explicitly clicked
-    if (filters.username) {
-      request.username = HARDCODED_USERNAME;
+    // Include selected users if any are selected
+    if (filters.selectedUsers.length > 0) {
+      request.usernames = filters.selectedUsers;
     }
 
     // Collect all seenStatuses from active buttons
@@ -217,16 +219,43 @@ function createVisitStore() {
         loading: false,
         error: null,
         filters: {
-          username: false,
+          selectedUsers: [],
           awaiting: false,
           collection: false,
           completedFull: false,
           completedPartial: false,
         },
+        groupUsers: [],
       }),
 
-    // Getters for hardcoded constants
-    getUsername: () => HARDCODED_USERNAME,
+    // Load group users
+    loadGroupUsers: async () => {
+      try {
+        const url = `${API_BASE_URL}/sites/group/users?group=${encodeURIComponent(
+          HARDCODED_GROUP
+        )}`;
+        console.log("Fetching users from:", url);
+        const response = await fetch(url);
+        console.log("Response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Response data:", data);
+        const users: User[] = data.users || [];
+        console.log("Parsed users:", users);
+        update((state) => ({
+          ...state,
+          groupUsers: users,
+        }));
+        return users;
+      } catch (error) {
+        console.error("Failed to load group users:", error);
+        return [];
+      }
+    },
+
+    // Getter for group name
     getGroupName: () => HARDCODED_GROUP,
   };
 

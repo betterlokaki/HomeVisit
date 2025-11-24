@@ -1,10 +1,10 @@
-import { defineConfig } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 export default defineConfig({
   plugins: [svelte()],
   server: {
-    port: 5174
-  }
+    port: 5174,
+    host: "0.0.0.0", // Allow all IPs to connect
+  },
 });
-

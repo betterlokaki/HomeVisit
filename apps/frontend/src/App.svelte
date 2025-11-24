@@ -34,11 +34,11 @@
 
 <!-- Root Container - RTL Layout with Dark Theme -->
 <div
-  class="content-stretch flex gap-[4px] items-stretch justify-end relative size-full min-h-screen w-full bg-black"
+  class="flex gap-[4px] items-stretch justify-end relative w-full h-screen bg-black"
   dir="rtl"
 >
-  <!-- Tickets Panel (Right) - 50% width -->
-  <div class="w-1/2 flex-shrink-0">
+  <!-- Tickets Panel (Right) - 1/3 width -->
+  <div class="w-1/3 h-full flex-shrink-0 overflow-hidden">
     <TicketsPanel
       cards={cardData}
       loading={isLoading}
@@ -46,9 +46,9 @@
     />
   </div>
 
-  <!-- Map Container (Left) - 50% width -->
+  <!-- Map Container (Left) - 2/3 width -->
   <div
-    class="bg-gray-900 box-border content-stretch flex flex-col gap-[24px] h-full items-end min-h-px min-w-px overflow-clip p-[12px] relative rounded-lg w-1/2 flex-shrink-0"
+    class="w-2/3 h-full bg-gray-900 box-border content-stretch flex flex-col gap-[24px] items-end overflow-clip p-[12px] flex-shrink-0"
   >
     <MapContainer bind:selectedSiteId />
   </div>

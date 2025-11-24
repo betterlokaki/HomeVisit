@@ -18,12 +18,24 @@ export class EnrichmentService {
       endDate.getTime() - (group?.data_refreshments || 0) * 1000
     );
     const overlays = await fetchOverlays(wkt, startDate, endDate);
-    return Promise.all(
-      sites.map(async (site) => ({
-        ...site,
-        updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
-        siteLink: createProjectLink(site, overlays),
-      }))
-    );
+
+    // Process sites in parallel batches to avoid overwhelming event loop
+    // With 10k overlays, each site calculation is CPU-intensive
+    const batchSize = 10;
+    const results: any[] = [];
+
+    for (let i = 0; i < sites.length; i += batchSize) {
+      const batch = sites.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(async (site) => ({
+          ...site,
+          updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
+          siteLink: createProjectLink(site, overlays),
+        }))
+      );
+      results.push(...batchResults);
+    }
+
+    return results;
   }
 }

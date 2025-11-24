@@ -4,6 +4,7 @@ import { SiteService } from "../services/siteService.js";
 import { GroupService } from "../services/groupService.js";
 import { EnrichmentService } from "../services/enrichmentService.js";
 import { FilterService } from "../services/filterService.js";
+import { UserService } from "../services/userService.js";
 import type { FilterRequest } from "@homevisit/common";
 import {
   sendError,
@@ -18,6 +19,7 @@ class SitesController {
   private groupService: GroupService;
   private enrichmentService: EnrichmentService;
   private filterService: FilterService;
+  private userService: UserService;
 
   constructor() {
     const postgrest = new PostgRESTClient();
@@ -25,6 +27,7 @@ class SitesController {
     this.groupService = new GroupService(postgrest);
     this.enrichmentService = new EnrichmentService(postgrest);
     this.filterService = new FilterService();
+    this.userService = new UserService(postgrest);
   }
 
   async getSites(req: Request, res: Response): Promise<void> {
@@ -102,6 +105,21 @@ class SitesController {
       sendSuccess(res, { message: "Site status updated successfully" });
     } catch (error) {
       sendError(res, "Failed to update site status", 500, error);
+    }
+  }
+
+  async getGroupUsers(req: Request, res: Response): Promise<void> {
+    try {
+      const groupName = req.query.group as string;
+      if (!groupName) {
+        sendValidationError(res, "Missing required parameter: group");
+        return;
+      }
+      const users = await this.userService.getUsersByGroupName(groupName);
+      logger.info("Group users fetched", { groupName, count: users.length });
+      sendSuccess(res, { users });
+    } catch (error) {
+      sendError(res, "Failed to fetch group users", 500, error);
     }
   }
 }

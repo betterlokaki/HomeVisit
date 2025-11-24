@@ -31,6 +31,8 @@ const envSchema = z.object({
   PROJECT_LINK_FORMAT: z
     .string()
     .default("https://homevisit.local/project?overlays={overlayIds}"),
+  OVERLAY_SERVICE_QUERY_PARAMS: z.string().default(""),
+  OVERLAY_SERVICE_HEADERS: z.string().default(""),
 });
 
 type EnvConfig = z.infer<typeof envSchema>;

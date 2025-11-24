@@ -21,6 +21,11 @@ import { ElasticProviderOverlay } from "@homevisit/common/src/index.js";
  * - Full: 100% coverage
  * - Partial: >0% and <100% coverage
  * - No: 0% coverage
+ *
+ * OPTIMIZED: Avoids expensive union operation on all overlays by:
+ * 1. Early filtering of overlays that intersect with site bbox
+ * 2. Incremental union (stop early if 100% coverage reached)
+ * 3. Skip union entirely if single overlay
  */
 export async function calcaulteIntersectionPrecent(
   site: Site,
@@ -47,9 +52,34 @@ export async function calcaulteIntersectionPrecent(
       return "No";
     }
     const siteFeat = feature(siteGeom as any);
+    const siteArea = area(siteFeat as any);
 
-    // Parse and collect all valid overlay geometries
-    const overlayFeats = overlays
+    if (siteArea === 0) {
+      logger.warn("Site area is zero", { site: site.site_id });
+      return "No";
+    }
+
+    // Quick bbox check: filter overlays to only those that could intersect
+    const siteBbox = getBbox(siteFeat);
+    const candidateOverlays = overlays.filter((overlay) => {
+      try {
+        const overlayGeom = wkt.parse((overlay.geo?.wkt || "") as any);
+        if (!overlayGeom) return false;
+        const overlayBbox = getBbox(feature(overlayGeom as any));
+        // Check if bounding boxes overlap
+        return bboxIntersect(siteBbox, overlayBbox);
+      } catch {
+        return false;
+      }
+    });
+
+    if (candidateOverlays.length === 0) {
+      logger.debug("No overlays intersect site bbox");
+      return "No";
+    }
+
+    // Parse only candidate overlay geometries
+    const overlayFeats = candidateOverlays
       .map((overlay: any) => {
         try {
           const geom = wkt.parse((overlay.geo?.wkt || "") as any);
@@ -67,19 +97,45 @@ export async function calcaulteIntersectionPrecent(
       return "No";
     }
 
-    // Perform iterative union of all overlays
-    let unionedOverlay: any = union(featureCollection(overlayFeats));
+    // OPTIMIZATION: Incremental union with early exit
+    let unionedOverlay: any = overlayFeats[0];
+    let currentIntersectionArea = 0;
+
+    for (let i = 1; i < overlayFeats.length; i++) {
+      try {
+        unionedOverlay = union(unionedOverlay, overlayFeats[i]);
+
+        // Early exit: if we already have 100% coverage, stop unioning
+        const testIntersection = intersect(
+          featureCollection([siteFeat, unionedOverlay])
+        );
+        if (testIntersection) {
+          currentIntersectionArea = area(testIntersection as any);
+          if (
+            Math.abs((currentIntersectionArea / siteArea) * 100 - 100) < 1e-9
+          ) {
+            logger.debug("Reached 100% coverage, stopping union early", {
+              siteId: site.site_id,
+              overlaysProcessed: i + 1,
+              totalOverlays: overlayFeats.length,
+            });
+            break;
+          }
+        }
+      } catch (e) {
+        logger.warn("Failed to union overlay", { error: e });
+      }
+    }
 
     if (!unionedOverlay) {
       logger.debug("No valid unioned overlay");
       return "No";
     }
 
-    // Calculate intersection between site and unioned overlays
+    // Calculate final intersection
     let p: any;
-    let d = unionedOverlay;
     try {
-      p = intersect(featureCollection([siteFeat, d]));
+      p = intersect(featureCollection([siteFeat, unionedOverlay]));
     } catch (e) {
       logger.warn("Failed to calculate intersection", { error: e });
       return "No";
@@ -90,16 +146,8 @@ export async function calcaulteIntersectionPrecent(
       return "No";
     }
 
-    // Calculate areas
-    const siteArea = area(siteFeat as any);
-    const intersectionArea = area(p as any);
-
-    if (siteArea === 0) {
-      logger.warn("Site area is zero", { site: site.site_id });
-      return "No";
-    }
-
     // Calculate percentage coverage
+    const intersectionArea = area(p as any);
     const coveragePercentage = (intersectionArea / siteArea) * 100;
 
     logger.debug("Calculated coverage percentage", {
@@ -107,6 +155,7 @@ export async function calcaulteIntersectionPrecent(
       siteArea,
       intersectionArea,
       coveragePercentage: coveragePercentage.toFixed(2),
+      overlaysProcessed: overlayFeats.length,
     });
 
     // Determine status based on coverage
@@ -121,6 +170,61 @@ export async function calcaulteIntersectionPrecent(
     logger.error("Error calculating intersection percent", error);
     return "No";
   }
+}
+
+/**
+ * Get bounding box [minX, minY, maxX, maxY] from a feature
+ */
+function getBbox(feat: any): [number, number, number, number] {
+  const coords = flattenCoords(feat.geometry);
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+
+  for (const [x, y] of coords) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+
+  return [minX, minY, maxX, maxY];
+}
+
+/**
+ * Check if two bounding boxes intersect
+ */
+function bboxIntersect(
+  bbox1: [number, number, number, number],
+  bbox2: [number, number, number, number]
+): boolean {
+  return !(
+    bbox1[2] < bbox2[0] ||
+    bbox1[0] > bbox2[2] ||
+    bbox1[3] < bbox2[1] ||
+    bbox1[1] > bbox2[3]
+  );
+}
+
+/**
+ * Flatten all coordinates from a geometry
+ */
+function flattenCoords(geom: any): Array<[number, number]> {
+  const coords: Array<[number, number]> = [];
+
+  function traverse(obj: any): void {
+    if (Array.isArray(obj)) {
+      if (typeof obj[0] === "number") {
+        coords.push([obj[0], obj[1]]);
+      } else {
+        for (const item of obj) traverse(item);
+      }
+    }
+  }
+
+  traverse(geom.coordinates);
+  return coords;
 }
 
 export function filterOverlaysByIntersection(

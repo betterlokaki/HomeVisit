@@ -1,10 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
   import VisitCard from "./VisitCard.svelte";
+  import UserDropdown from "./UserDropdown.svelte";
   import type { VisitCard as VisitCardType } from "../stores/visitStore";
   import type { SiteFilters } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
   import { saveFilters, loadFilters } from "../utils/filterStorage";
+  import type { User } from "@homevisit/common";
 
   export let cards: VisitCardType[] = [];
   export let loading: boolean = false;
@@ -14,20 +16,37 @@
   // Track which card is currently selected
   let selectedCardId: number | null = null;
 
+  // User dropdown state
+  let groupUsers: User[] = [];
+  let userDropdownOpen: boolean = false;
+
   // Filter state
   let filters: SiteFilters = {
-    username: false,
+    selectedUsers: [],
     awaiting: false,
     collection: false,
     completedFull: false,
     completedPartial: false,
   };
 
-  // Load filters from localStorage on mount
-  onMount(() => {
-    const saved = loadFilters();
-    if (saved) {
-      filters = saved;
+  // Load filters and users on mount
+  onMount(async () => {
+    // const saved = loadFilters();
+    //if (saved) {
+    //filters = saved;
+    //}
+
+    // Load group users
+    groupUsers = await visitStore.loadGroupUsers();
+    console.log("Loaded groupUsers:", groupUsers);
+
+    // If no users were selected before, select all by default
+    if (filters.selectedUsers.length === 0 && groupUsers.length > 0) {
+      filters.selectedUsers = groupUsers
+        .map((u) => u.username)
+        .filter((u) => u !== undefined) as string[];
+      console.log("Auto-selected users:", filters.selectedUsers);
+      saveFilters(filters);
     }
   });
 
@@ -60,7 +79,18 @@
 
   // Handle filter toggle
   async function toggleFilter(filterName: keyof SiteFilters) {
-    filters[filterName] = !filters[filterName];
+    if (filterName !== "selectedUsers") {
+      filters[filterName] = !filters[filterName];
+      // Save to localStorage
+      saveFilters(filters);
+      // Reload cards with new filters
+      await visitStore.updateFilters(filters);
+    }
+  }
+
+  // Handle user selection change
+  async function handleUsersChange(event: CustomEvent<string[]>) {
+    filters.selectedUsers = event.detail;
     // Save to localStorage
     saveFilters(filters);
     // Reload cards with new filters
@@ -87,17 +117,13 @@
 
     <!-- Filter Section -->
     <div class="flex gap-1 items-center w-full flex-wrap">
-      <!-- Button 1: Username Filter -->
-      <button
-        on:click={() => toggleFilter("username")}
-        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-          filters.username
-            ? "bg-blue-600 hover:bg-blue-500 text-white"
-            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
-        }`}
-      >
-        יוזר
-      </button>
+      <!-- User Dropdown Filter -->
+      <UserDropdown
+        users={groupUsers}
+        selectedUsernames={filters.selectedUsers}
+        isOpen={userDropdownOpen}
+        on:change={handleUsersChange}
+      />
 
       <!-- Button 2: Awaiting Filter (updatedStatus Full|Partial AND seen_status Not Seen|Partial) -->
       <button
