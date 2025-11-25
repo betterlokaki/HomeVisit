@@ -233,7 +233,7 @@ MOCK_OVERLAYS = [
 @app.route('/health', methods=['POST'])
 def answer_by_hapuch():
     """Health check endpoint with overlay data"""
-    return jsonify(MOCK_OVERLAYS), 200
+    return jsonify({"entities_list": MOCK_OVERLAYS}), 200
 
 
 

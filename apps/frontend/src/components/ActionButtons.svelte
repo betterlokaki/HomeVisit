@@ -3,6 +3,7 @@
 
   export let disabledButton: string | null = null;
   export let currentStatus: string = "Not Seen";
+  export let updatedStatus: string = "Full";
 
   const dispatch = createEventDispatcher();
 
@@ -52,12 +53,16 @@
   <button
     on:click={handleCompleted}
     on:keydown={(e) => handleKeyDown(e, handleCompleted)}
-    disabled={disabledButton === "completed"}
+    disabled={disabledButton === "completed" || updatedStatus !== "Full"}
     class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
       'Seen',
-      disabledButton === 'completed'
+      disabledButton === 'completed' || updatedStatus !== 'Full'
     )}"
-    title={disabledButton === "completed" ? "לא זמין בסטטוס זה" : "בוצע"}
+    title={updatedStatus !== "Full"
+      ? "לא ניתן לבצע, אין איסוף מלא"
+      : disabledButton === "completed"
+        ? "לא זמין בסטטוס זה"
+        : "בוצע"}
   >
     <p class="font-normal text-sm text-right leading-5">בוצע</p>
   </button>

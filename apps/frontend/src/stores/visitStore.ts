@@ -45,6 +45,12 @@ function createVisitStore() {
     groupUsers: [],
   });
 
+  // Trigger store subscribers when group changes
+  const notifyGroupChange = () => {
+    const state = get({ subscribe } as any) as VisitStoreState;
+    set(state); // This will trigger subscribers
+  };
+
   // Helper to build filter request from filters state
   const buildFilterRequest = (filters: SiteFilters): FilterRequest => {
     let request: FilterRequest = {};
@@ -258,6 +264,7 @@ function createVisitStore() {
     // Set the current group
     setGroup: (groupName: string) => {
       currentGroup = groupName;
+      notifyGroupChange(); // Trigger store subscribers
     },
 
     // Getter for group name

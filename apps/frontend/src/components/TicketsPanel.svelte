@@ -5,11 +5,12 @@
   import type { VisitCard as VisitCardType } from "../stores/visitStore";
   import type { SiteFilters } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
-  import { saveFilters, loadFilters } from "../utils/filterStorage";
+  import { saveFilters } from "../utils/filterStorage";
   import type { User } from "@homevisit/common";
 
   export let cards: VisitCardType[] = [];
   export let loading: boolean = false;
+  export let groupName: string = "Weekly Refresh Group";
 
   const dispatch = createEventDispatcher();
 
@@ -19,6 +20,7 @@
   // User dropdown state
   let groupUsers: User[] = [];
   let userDropdownOpen: boolean = false;
+  let currentGroup: string = "Weekly Refresh Group";
 
   // Filter state
   let filters: SiteFilters = {
@@ -30,25 +32,51 @@
   };
 
   // Load filters and users on mount
-  onMount(async () => {
-    // const saved = loadFilters();
-    //if (saved) {
-    //filters = saved;
-    //}
+  let unsubscribeStore: any;
 
-    // Load group users
+  onMount(() => {
+    // Subscribe to store changes to detect group changes
+    unsubscribeStore = visitStore.subscribe(() => {
+      const newGroup = visitStore.getGroupName();
+      if (newGroup !== currentGroup) {
+        console.log("Store: Group changed from", currentGroup, "to", newGroup);
+        currentGroup = newGroup;
+        loadGroupUsersForCurrentGroup();
+      }
+    });
+
+    // Initial load
+    currentGroup = visitStore.getGroupName();
+    loadGroupUsersForCurrentGroup();
+
+    return () => {
+      if (unsubscribeStore) unsubscribeStore();
+    };
+  });
+
+  // React to groupName prop changes
+  $: if (groupName && groupName !== currentGroup) {
+    console.log("Prop: Group changed from", currentGroup, "to", groupName);
+    currentGroup = groupName;
+    loadGroupUsersForCurrentGroup();
+  }
+
+  // Load group users and reset filters
+  async function loadGroupUsersForCurrentGroup() {
+    console.log("Loading users for group:", currentGroup);
     groupUsers = await visitStore.loadGroupUsers();
     console.log("Loaded groupUsers:", groupUsers);
 
-    // If no users were selected before, select all by default
-    if (filters.selectedUsers.length === 0 && groupUsers.length > 0) {
-      filters.selectedUsers = groupUsers
-        .map((u) => u.username)
-        .filter((u) => u !== undefined) as string[];
-      console.log("Auto-selected users:", filters.selectedUsers);
-      saveFilters(filters);
-    }
-  });
+    // Reset selected users and select all from new group
+    filters.selectedUsers = groupUsers
+      .map((u) => u.username)
+      .filter((u) => u !== undefined) as string[];
+    console.log("Auto-selected users:", filters.selectedUsers);
+    saveFilters(filters);
+
+    // Reload cards with new filters
+    await visitStore.updateFilters(filters);
+  }
 
   // Handler for card selection
   function handleCardSelect(cardId: number) {

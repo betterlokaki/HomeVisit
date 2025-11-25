@@ -17,6 +17,9 @@ export const CORS_ORIGINS = true; // Allow all origins for development
 // ============================================================================
 export const SERVER_TIMEOUT = config.SERVER_TIMEOUT;
 export const REQUEST_JSON_LIMIT = config.REQUEST_JSON_LIMIT;
+export const ALLOWED_HOSTS = config.ALLOWED_HOSTS.split(",").map((h) =>
+  h.trim()
+);
 
 // ============================================================================
 // PostgREST Configuration

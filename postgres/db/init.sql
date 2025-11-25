@@ -99,17 +99,20 @@ CREATE INDEX IF NOT EXISTS idx_sites_geometry ON sites USING GIST(geometry);
 -- SAMPLE DATA
 -- ============================================================================
 
-/** Insert 7-day refresh group */
+/** Insert groups with different refresh intervals */
 INSERT INTO groups (group_name, data_refreshments)
 VALUES
-  ('Weekly Refresh Group', 604800000)
+  ('Weekly Refresh Group', 604800000),
+  ('Daily Check Group', 86400000)
 ON CONFLICT DO NOTHING;
 
-/** Insert sample users - shahar and demo assigned to group_id 1 */
+/** Insert sample users - shahar and demo assigned to group_id 1, alex and sara to group_id 2 */
 INSERT INTO users (group_id, username, display_name)
 VALUES 
   (1, 'shahar', 'שחר'),
-  (1, 'demo', 'בדיקה')
+  (1, 'demo', 'בדיקה'),
+  (2, 'alex', 'אלכס'),
+  (2, 'sara', 'שרה')
 ON CONFLICT DO NOTHING;
 
 /** Insert sample sites - with 6+ point polygons for shahar and demo users */
@@ -211,6 +214,95 @@ VALUES
     'Not Seen',
     ST_SetSRID(
       ST_GeomFromText('POLYGON((34.85 32.3, 34.9 32.33, 34.95 32.32, 34.93 32.29, 34.89 32.27, 34.85 32.3))'),
+      4326
+    )
+  ),
+  -- Group 2: Daily Check Group Sites
+  -- Paris (6 points) - alex
+  (
+    'Paris',
+    2,
+    3,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((2.2 48.8, 2.4 48.9, 2.5 48.85, 2.45 48.75, 2.3 48.7, 2.2 48.8))'),
+      4326
+    )
+  ),
+  -- London (7 points) - sara
+  (
+    'London',
+    2,
+    4,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((-0.2 51.5, -0.1 51.55, 0.0 51.56, 0.1 51.54, 0.08 51.5, 0.0 51.48, -0.2 51.5))'),
+      4326
+    )
+  ),
+  -- Berlin (6 points) - alex
+  (
+    'Berlin',
+    2,
+    3,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((13.3 52.5, 13.5 52.55, 13.6 52.52, 13.55 52.48, 13.4 52.46, 13.3 52.5))'),
+      4326
+    )
+  ),
+  -- Amsterdam (7 points) - sara
+  (
+    'Amsterdam',
+    2,
+    4,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((4.8 52.35, 4.9 52.38, 5.0 52.39, 5.1 52.37, 5.08 52.33, 4.95 52.32, 4.8 52.35))'),
+      4326
+    )
+  ),
+  -- Barcelona (6 points) - alex
+  (
+    'Barcelona',
+    2,
+    3,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((2.1 41.3, 2.2 41.35, 2.3 41.33, 2.28 41.28, 2.18 41.26, 2.1 41.3))'),
+      4326
+    )
+  ),
+  -- Rome (7 points) - sara
+  (
+    'Rome',
+    2,
+    4,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((12.4 41.8, 12.5 41.83, 12.6 41.84, 12.65 41.82, 12.62 41.78, 12.5 41.76, 12.4 41.8))'),
+      4326
+    )
+  ),
+  -- Vienna (6 points) - alex
+  (
+    'Vienna',
+    2,
+    3,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((16.3 48.2, 16.4 48.25, 16.5 48.23, 16.48 48.18, 16.38 48.16, 16.3 48.2))'),
+      4326
+    )
+  ),
+  -- Prague (7 points) - sara
+  (
+    'Prague',
+    2,
+    4,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((14.4 50.0, 14.5 50.03, 14.6 50.04, 14.65 50.02, 14.62 49.98, 14.5 49.96, 14.4 50.0))'),
       4326
     )
   )

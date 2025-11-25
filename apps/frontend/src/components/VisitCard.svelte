@@ -20,14 +20,20 @@
   // Handlers for action buttons
   async function handleCompleted() {
     await visitStore.updateCardStatus(card.site_id, "Seen");
+    // Keep card selected after status update
+    dispatch("select", card.site_id);
   }
 
   async function handlePartiallyCompleted() {
     await visitStore.updateCardStatus(card.site_id, "Partial");
+    // Keep card selected after status update
+    dispatch("select", card.site_id);
   }
 
   async function handleNotDone() {
     await visitStore.updateCardStatus(card.site_id, "Not Seen");
+    // Keep card selected after status update
+    dispatch("select", card.site_id);
   }
 
   function handleKeyDown(event: KeyboardEvent, handler: () => void) {
@@ -49,9 +55,9 @@
         textColor: "text-yellow-400",
       },
       Partial: {
-        text: "מחכה לביקור",
-        borderColor: "border-yellow-400",
-        textColor: "text-yellow-400",
+        text: "בוצע חלקית",
+        borderColor: "border-orange-400",
+        textColor: "text-orange-400",
       },
       Seen: {
         text: "בוצע",
@@ -68,15 +74,15 @@
   }
 
   // Get updated status display based on updatedStatus field
-  function getUpdatedStatusDisplay(status: string) {
-    if (status === "No") {
+  function getUpdatedStatusDisplay(updatedStatus: string, seenStatus: string) {
+    if (updatedStatus === "No") {
       return {
         text: "אין איסוף",
         borderColor: "border-red-500",
         textColor: "text-red-500",
       };
     }
-    return getSeenStatusDisplay(status);
+    return getSeenStatusDisplay(seenStatus);
   }
 
   // Format date function
@@ -107,7 +113,7 @@
   <!-- Lightning Bolt Button - Top Left -->
   <a
     href={card.updatedStatus === "No" ? "#" : card.siteLink}
-    target={card.updatedStatus === "No" ? "_self" : "_blank"}
+    target="_self"
     rel="noopener noreferrer"
     on:click|stopPropagation={(e) => {
       if (card.updatedStatus === "No") {
@@ -118,7 +124,7 @@
     class="absolute top-2 left-2 border {card.updatedStatus === 'No'
       ? 'border-gray-500 bg-gray-800 cursor-not-allowed opacity-50'
       : 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer'} flex items-center justify-center h-5 w-5 rounded transition-colors group"
-    title={card.updatedStatus === "No" ? "לא זמין" : "פתח מפקח"}
+    title={card.updatedStatus === "No" ? "אין איסוף" : "פתח בברק"}
     style={card.updatedStatus === "No" ? "pointer-events: none;" : ""}
   >
     <div
@@ -154,6 +160,7 @@
     >
       <ActionButtons
         currentStatus={card.seen_status}
+        updatedStatus={card.updatedStatus}
         disabledButton={card.seen_status === "Partial" ? "completed" : null}
         on:completed={handleCompleted}
         on:partiallyCompleted={handlePartiallyCompleted}
@@ -167,21 +174,23 @@
     <div class="flex flex-col gap-1.5 items-end w-20">
       <!-- Status Badge -->
       <div
-        class="{getUpdatedStatusDisplay(card.updatedStatus)
+        class="{getUpdatedStatusDisplay(card.updatedStatus, card.seen_status)
           .borderColor} border flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-sm w-full"
       >
         <p
           class="font-normal text-xs leading-3 {getUpdatedStatusDisplay(
-            card.updatedStatus
+            card.updatedStatus,
+            card.seen_status
           ).textColor} text-right"
           style="font-size: 10px;"
         >
-          {getUpdatedStatusDisplay(card.updatedStatus).text}
+          {getUpdatedStatusDisplay(card.updatedStatus, card.seen_status).text}
         </p>
         <!-- Small status icon circle -->
         <div
           class="w-2 h-2 rounded-full {getUpdatedStatusDisplay(
-            card.updatedStatus
+            card.updatedStatus,
+            card.seen_status
           ).textColor.replace('text-', 'bg-')}"
         ></div>
       </div>

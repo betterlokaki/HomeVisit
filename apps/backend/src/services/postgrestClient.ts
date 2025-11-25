@@ -1,4 +1,5 @@
 import axios from "axios";
+import { config } from "../config/env.js";
 import { logger } from "../middleware/logger.js";
 
 /**
@@ -7,7 +8,7 @@ import { logger } from "../middleware/logger.js";
  */
 export class PostgRESTClient {
   private client = axios.create({
-    baseURL: process.env.POSTGREST_URL || "http://localhost:3000",
+    baseURL: config.POSTGREST_URL || "http://localhost:3000",
     timeout: 5000,
     headers: { "Content-Type": "application/json" },
   });

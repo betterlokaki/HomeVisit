@@ -19,6 +19,7 @@ const envSchema = z.object({
   CORS_ORIGIN_2: z.string().url(),
   SERVER_TIMEOUT: z.coerce.number().default(5000),
   REQUEST_JSON_LIMIT: z.string().default("1mb"),
+  ALLOWED_HOSTS: z.string().default("localhost,127.0.0.1"),
   POSTGREST_RPC_AUTH_ENDPOINT: z.string().default("/rpc/get_or_create_user"),
   POSTGREST_RPC_SITES_ENDPOINT: z.string().default("/rpc/get_user_sites"),
   POSTGREST_AUTH_PARAM: z.string().default("p_group_id"),

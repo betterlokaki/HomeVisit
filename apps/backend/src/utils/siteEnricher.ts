@@ -4,7 +4,14 @@
  * Adds calculated fields to site data.
  */
 
-import { union, intersect, area, feature, featureCollection } from "@turf/turf";
+import {
+  union,
+  intersect,
+  area,
+  feature,
+  featureCollection,
+  difference,
+} from "@turf/turf";
 import wkt from "wellknown";
 import {
   SITE_STATUS_OPTIONS,
@@ -103,7 +110,9 @@ export async function calcaulteIntersectionPrecent(
 
     for (let i = 1; i < overlayFeats.length; i++) {
       try {
-        unionedOverlay = union(unionedOverlay, overlayFeats[i]);
+        unionedOverlay = union(
+          featureCollection([unionedOverlay, overlayFeats[i]])
+        );
 
         // Early exit: if we already have 100% coverage, stop unioning
         const testIntersection = intersect(
@@ -227,6 +236,22 @@ function flattenCoords(geom: any): Array<[number, number]> {
   return coords;
 }
 
+/**
+ * Select best quality overlays to cover a site
+ *
+ * ALGORITHM:
+ * 1. Sort overlays by resolution (ascending = lower resolution = better quality)
+ * 2. Iteratively select overlays with best resolution
+ * 3. For each selected overlay, remove its covered geometry from remaining site
+ * 4. Continue until site is 100% covered or all overlays exhausted
+ * 5. Return only the selected best overlays
+ *
+ * OPTIMIZATION:
+ * - Early bbox filtering to skip non-intersecting overlays
+ * - Early exit when site is fully covered
+ * - Minimal geometry operations (only intersect/difference)
+ * - Cache parsed geometries to avoid re-parsing
+ */
 export function filterOverlaysByIntersection(
   site: Site,
   overlays: ElasticProviderOverlay[]
@@ -244,28 +269,127 @@ export function filterOverlaysByIntersection(
       });
       return [];
     }
+
+    let remainingSiteGeom: any = siteGeom;
     const siteFeat = feature(siteGeom as any);
+    const siteArea = area(siteFeat as any);
 
-    // Filter overlays based on intersection
-    return overlays.filter((overlay: any) => {
+    if (siteArea === 0) {
+      logger.warn("Site area is zero", { site: site.site_id });
+      return [];
+    }
+
+    const siteBbox = getBbox(siteFeat);
+
+    // Parse and cache overlays with valid geometries, filtered by bbox
+    const candidateOverlays = overlays
+      .map((overlay) => {
+        try {
+          const overlayGeom = wkt.parse((overlay.geo?.wkt || "") as any);
+          if (!overlayGeom) return null;
+          const overlayBbox = getBbox(feature(overlayGeom as any));
+
+          // Skip overlays that don't intersect site bbox
+          if (!bboxIntersect(siteBbox, overlayBbox)) return null;
+
+          return {
+            overlay,
+            geometry: overlayGeom,
+            resolution: overlay.properties_List?.Resolution ?? Infinity,
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter((item) => item !== null) as Array<{
+      overlay: ElasticProviderOverlay;
+      geometry: any;
+      resolution: number;
+    }>;
+
+    if (candidateOverlays.length === 0) {
+      return [];
+    }
+
+    // Sort by resolution (ascending = best first, lowest resolution)
+    candidateOverlays.sort((a, b) => a.resolution - b.resolution);
+
+    const selectedOverlays: ElasticProviderOverlay[] = [];
+    let remainingArea = siteArea;
+
+    // Iteratively select best overlays, removing covered geometry
+    for (const candidate of candidateOverlays) {
       try {
-        const overlayGeom = wkt.parse((overlay.geo?.wkt || "") as any);
-        if (!overlayGeom) return false;
+        const overlayFeat = feature(candidate.geometry as any);
+        const remainingSiteFeat = feature(remainingSiteGeom as any);
 
-        const overlayFeat = feature(overlayGeom as any);
+        // Check intersection
+        const intersection = intersect(
+          remainingSiteFeat as any,
+          overlayFeat as any
+        );
 
-        // Check if the overlay intersects with the site
-        const intersection = intersect(siteFeat as any, overlayFeat as any);
+        if (!intersection) {
+          continue; // Skip if no intersection
+        }
 
-        return intersection !== null && intersection !== undefined;
+        // Add this overlay to selected list
+        selectedOverlays.push(candidate.overlay);
+        const intersectionArea = area(intersection as any);
+        remainingArea -= intersectionArea;
+
+        logger.debug("Selected overlay for site coverage", {
+          siteId: site.site_id,
+          resolution: candidate.resolution,
+          intersectionArea: intersectionArea.toFixed(2),
+          remainingArea: remainingArea.toFixed(2),
+          remainingPercentage: ((remainingArea / siteArea) * 100).toFixed(2),
+        });
+
+        // Early exit: if site is fully covered (within floating point tolerance)
+        if (remainingArea / siteArea < 1e-9) {
+          logger.debug("Site fully covered, stopping overlay selection", {
+            siteId: site.site_id,
+            selectedOverlays: selectedOverlays.length,
+          });
+          return selectedOverlays;
+        }
+
+        // Remove covered area from remaining site geometry
+        try {
+          // Skip geometry update for point geometries
+          if (overlayFeat.geometry.type !== "Point") {
+            const diffResult = difference(
+              featureCollection([remainingSiteFeat as any, overlayFeat as any])
+            );
+            if (diffResult && diffResult.geometry) {
+              remainingSiteGeom = diffResult.geometry;
+            }
+          }
+        } catch (e) {
+          logger.warn(
+            "Failed to compute difference, continuing with current geometry",
+            { error: e }
+          );
+          // Continue with current geometry if difference fails
+        }
       } catch (e) {
-        logger.warn("Failed to check overlay intersection with site", {
-          overlay,
+        logger.warn("Failed to process overlay during selection", {
+          overlay: candidate.overlay,
           error: e,
         });
-        return false;
+        continue;
       }
+    }
+
+    const finalCoverage = ((siteArea - remainingArea) / siteArea) * 100;
+    logger.debug("Overlay selection complete", {
+      siteId: site.site_id,
+      selectedOverlays: selectedOverlays.length,
+      coverage: finalCoverage.toFixed(2) + "%",
     });
+
+    return selectedOverlays;
   } catch (error) {
     logger.error("Error filtering overlays by intersection", error);
     return [];

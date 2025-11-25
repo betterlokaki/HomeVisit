@@ -14,6 +14,7 @@
   onMount(async () => {
     // Get group name from URL params
     groupName = ($page.params.groupName as string) || "Weekly Refresh Group";
+    console.log("Setting group to:", groupName);
     visitStore.setGroup(groupName);
 
     // Load initial filters from localStorage
@@ -25,6 +26,19 @@
       await visitStore.loadVisitCards();
     }
   });
+
+  // React to group parameter changes in the URL
+  $: {
+    const newGroupName =
+      ($page.params.groupName as string) || "Weekly Refresh Group";
+    if (newGroupName !== groupName && newGroupName) {
+      console.log("Group param changed from", groupName, "to", newGroupName);
+      groupName = newGroupName;
+      visitStore.setGroup(newGroupName);
+      // Load cards for the new group without saved filters
+      visitStore.loadVisitCards();
+    }
+  }
 
   // Subscribe to the visit store
   visitStore.subscribe((state: any) => {
@@ -41,6 +55,7 @@
   <!-- Tickets Panel (Right) - 1/3 width -->
   <div class="w-1/3 h-full flex-shrink-0 overflow-hidden">
     <TicketsPanel
+      {groupName}
       cards={cardData}
       loading={isLoading}
       on:cardSelect={(e) => (selectedSiteId = e.detail)}

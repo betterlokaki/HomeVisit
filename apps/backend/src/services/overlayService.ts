@@ -72,10 +72,11 @@ async function searchOverlays(
       }
     }
 
-    const response = await axios.post(url, params, { headers });
+    const response = await axios.post(url, params, headers);
 
     // Convert response to ElasticProviderOverlay[]
-    const overlays: ElasticProviderOverlay[] = response.data || [];
+    const overlays: ElasticProviderOverlay[] =
+      response.data.entities_list || [];
     return overlays;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
