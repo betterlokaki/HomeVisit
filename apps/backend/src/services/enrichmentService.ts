@@ -1,7 +1,10 @@
 import type { Site } from "@homevisit/common";
 import { PostgRESTClient } from "./postgrestClient.js";
 import { fetchOverlays } from "./overlayService.js";
-import { calcaulteIntersectionPrecent } from "../utils/siteEnricher.js";
+import {
+  calcaulteIntersectionPrecent,
+  filterOverlaysByIntersection,
+} from "../utils/siteEnricher.js";
 import { createProjectLink } from "../utils/siteEnricher.js";
 import { mergeGeometriesToMultiPolygon } from "../utils/geometryMerger.js";
 import { logger } from "../middleware/logger.js";
@@ -27,11 +30,19 @@ export class EnrichmentService {
     for (let i = 0; i < sites.length; i += batchSize) {
       const batch = sites.slice(i, i + batchSize);
       const batchResults = await Promise.all(
-        batch.map(async (site) => ({
-          ...site,
-          updatedStatus: await calcaulteIntersectionPrecent(site, overlays),
-          siteLink: createProjectLink(site, overlays),
-        }))
+        batch.map(async (site) => {
+          const relevantOverlays = filterOverlaysByIntersection(site, overlays);
+          const status = await calcaulteIntersectionPrecent(
+            site,
+            relevantOverlays
+          );
+          const siteLink = createProjectLink(site, relevantOverlays);
+          return {
+            ...site,
+            updatedStatus: status,
+            siteLink: siteLink,
+          };
+        })
       );
       results.push(...batchResults);
     }

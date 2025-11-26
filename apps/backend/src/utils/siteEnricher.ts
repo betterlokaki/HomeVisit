@@ -325,8 +325,7 @@ export function filterOverlaysByIntersection(
 
         // Check intersection
         const intersection = intersect(
-          remainingSiteFeat as any,
-          overlayFeat as any
+          featureCollection([remainingSiteFeat, overlayFeat])
         );
 
         if (!intersection) {
@@ -411,7 +410,7 @@ export function createProjectLink(
 
     // Extract overlay entity IDs
     const overlayIds = overlays
-      .map((o) => `\\\\\\${o.exclusive_id.entity_id}\\\\\\`)
+      .map((o) => `\\\\\\"${o.exclusive_id.entity_id}\\\\\\"`)
       .join(",");
 
     // Substitute overlayIds into the format string
