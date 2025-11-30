@@ -1,0 +1,25 @@
+{
+  "BLublu (this can be anything)": [
+    {
+      "this created randomly": {
+        // # List of wkts
+        "texts": []
+      }
+    },
+    {
+      "this created randomly 2 (the jey would be something random)": {
+        // List of site names
+        "texts": []
+      }
+    },
+    {
+      "this created randomly 3": {
+        // can be any dates
+        "StartTime": {
+          "DateFrom": "2023-10-01T00:00:00Z",
+          "DateTo": "2023-10-31T23:59:59Z"
+        }
+      }
+    }
+  ]
+}

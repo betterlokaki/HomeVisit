@@ -9,4 +9,6 @@ export * from "./Overlay.js";
 export * from "./OverlaySearch.js";
 export * from "./FilterConfig.js";
 export * from "./ApiResponse.js";
+export * from "./EnrichmentRequest.js";
+export * from "./EnrichmentResponse.js";
 export type { FilterRequest, SiteFilters } from "./FilterConfig.js";

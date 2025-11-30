@@ -1,52 +1,106 @@
-import type { Site } from "@homevisit/common";
+import type {
+  EnrichedSite,
+  Site,
+  EnrichmentRequestBody,
+  EnrichmentResponseBody,
+  EnrichmentSiteStatusItem,
+  Group,
+} from "@homevisit/common";
 import { PostgRESTClient } from "./postgrestClient.js";
-import { fetchOverlays } from "./overlayService.js";
-import {
-  calcaulteIntersectionPrecent,
-  filterOverlaysByIntersection,
-} from "../utils/siteEnricher.js";
-import { createProjectLink } from "../utils/siteEnricher.js";
-import { mergeGeometriesToMultiPolygon } from "../utils/geometryMerger.js";
 import { logger } from "../middleware/logger.js";
+import {
+  getEnrichmentConfig,
+  type RequestKeys,
+} from "../config/enrichmentConfig.js";
+import axios from "axios";
 
 export class EnrichmentService {
-  constructor(private postgrest: PostgRESTClient) {}
+  private url: string;
+  private headers: Record<string, string>;
+  private requestKeys: RequestKeys;
 
-  async enrichSites(sites: Site[], group: any): Promise<any[]> {
-    if (sites.length === 0) return [];
-    const geometries = sites.map((s) => s.geometry) as string[];
-    const wkt = mergeGeometriesToMultiPolygon(geometries);
-    const endDate = new Date();
-    const startDate = new Date(
-      endDate.getTime() - (group?.data_refreshments || 0) * 1000
-    );
-    const overlays = await fetchOverlays(wkt, startDate, endDate);
+  constructor(private postgrest: PostgRESTClient) {
+    this.postgrest = postgrest;
+    const config = getEnrichmentConfig();
+    this.url = config.enrichmentService.url;
+    this.headers = config.enrichmentService.headers;
+    this.requestKeys = config.enrichmentService.requestKeys;
+  }
 
-    // Process sites in parallel batches to avoid overwhelming event loop
-    // With 10k overlays, each site calculation is CPU-intensive
-    const batchSize = 10;
-    const results: any[] = [];
+  private buildRequest(
+    siteNames: string[],
+    geometries: string[],
+    dateFrom: string,
+    dateTo: string
+  ): EnrichmentRequestBody {
+    const { outerKey, geometryKey, siteNamesKey, dateKey } = this.requestKeys;
 
-    for (let i = 0; i < sites.length; i += batchSize) {
-      const batch = sites.slice(i, i + batchSize);
-      const batchResults = await Promise.all(
-        batch.map(async (site) => {
-          const relevantOverlays = filterOverlaysByIntersection(site, overlays);
-          const status = await calcaulteIntersectionPrecent(
-            site,
-            relevantOverlays
-          );
-          const siteLink = createProjectLink(site, relevantOverlays);
-          return {
-            ...site,
-            updatedStatus: status,
-            siteLink: siteLink,
-          };
-        })
-      );
-      results.push(...batchResults);
+    return {
+      [outerKey]: [
+        { [geometryKey]: { texts: geometries } },
+        { [siteNamesKey]: { texts: siteNames } },
+        { [dateKey]: { StartTime: { DateFrom: dateFrom, DateTo: dateTo } } },
+      ],
+    };
+  }
+
+  private extractResponseData(
+    responseBody: EnrichmentResponseBody
+  ): EnrichmentSiteStatusItem[] {
+    const keys = Object.keys(responseBody);
+    if (keys.length === 0) {
+      logger.warn("Enrichment response has no data keys");
+      return [];
     }
+    return responseBody[keys[0]];
+  }
 
-    return results;
+  private mapToEnrichedSite(
+    site: Site,
+    statusItem: EnrichmentSiteStatusItem | undefined
+  ): EnrichedSite {
+    return {
+      ...site,
+      updatedStatus: statusItem?.status ?? "No",
+      siteLink: statusItem?.projectLink ?? "",
+    };
+  }
+
+  async enrichSites(sites: Site[], group: Group): Promise<EnrichedSite[]> {
+    if (sites.length === 0) return [];
+
+    const geometries: string[] = sites.map((s) => s.geometry);
+    const siteNames: string[] = sites.map((s) => s.display_name);
+
+    // Date range based on group's data_refreshments setting
+    const dateTo = new Date().toISOString();
+    const dateFrom = new Date(
+      Date.now() - group.data_refreshments
+    ).toISOString();
+    console.log("Enrichment date range:", dateFrom, "to", dateTo);
+    const request = this.buildRequest(siteNames, geometries, dateFrom, dateTo);
+
+    try {
+      const response = await axios.post<EnrichmentResponseBody>(
+        this.url,
+        request,
+        { headers: this.headers }
+      );
+      console.log("Enrichment response data:", response.data);
+      const statusItems = this.extractResponseData(response.data);
+
+      // Map response items to sites by siteName
+      const statusMap = new Map(
+        statusItems.map((item) => [item.siteName, item])
+      );
+
+      return sites.map((site) =>
+        this.mapToEnrichedSite(site, statusMap.get(site.display_name))
+      );
+    } catch (error) {
+      logger.error("Failed to enrich sites from external service", error);
+      // Return sites with default "No" status on error
+      return sites.map((site) => this.mapToEnrichedSite(site, undefined));
+    }
   }
 }

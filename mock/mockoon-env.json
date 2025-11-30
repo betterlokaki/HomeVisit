@@ -1,0 +1,125 @@
+{
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "lastMigration": 32,
+  "name": "HomeVisit Status Mock API",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 5002,
+  "hostname": "",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "status-endpoint-001",
+      "type": "http",
+      "documentation": "Status endpoint - returns site status based on request",
+      "method": "post",
+      "endpoint": "status",
+      "responses": [
+        {
+          "uuid": "status-response-001",
+          "body": "{{#each (body @request)}}{{#each this}}{{#each this}}{{#if this.texts}}{{setVar 'siteNames' this.texts}}{{/if}}{{/each}}{{/each}}{{/each}}{\n  \"{{faker 'string.alphanumeric' 12}}\": [\n{{#each (getVar 'siteNames')}}    {\n      \"siteName\": \"{{this}}\",\n      \"status\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}Full{{/case}}{{#case 2}}Partial{{/case}}{{#case 3}}No{{/case}}{{/switch}}\",\n      \"projectLink\": \"http://example.com/project/{{faker 'string.alphanumeric' 8}}\"\n    }{{#unless @last}},{{/unless}}\n{{/each}}  ]\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Success - Random site statuses",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    },
+    {
+      "uuid": "health-endpoint-001",
+      "type": "http",
+      "documentation": "Health check endpoint - returns overlay data",
+      "method": "post",
+      "endpoint": "health",
+      "responses": [
+        {
+          "uuid": "health-response-001",
+          "body": "{\n  \"entities_list\": [\n    {\n      \"classification\": {\n        \"clearence_level\": \"UNCLASSIFIED\",\n        \"publish_procedure\": \"STANDARD\",\n        \"triangle\": \"{{faker 'string.alphanumeric' 3}}\"\n      },\n      \"date\": \"{{dateFormat (now) 'YYYY-MM-DDTHH:mm:ss'}}Z\",\n      \"exclusive_id\": {\n        \"data_store_name\": \"ElasticDataStore01\",\n        \"entity_id\": \"{{faker 'string.uuid'}}\",\n        \"layer_id\": \"layer_{{faker 'number.int' '{\\\"min\\\": 1000, \\\"max\\\": 9999}'}}\"\n      },\n      \"geo\": {\n        \"wkt\": \"POLYGON((34.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 31.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 31.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 31.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 31.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 31.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}))\"      },\n      \"Link\": \"https://example.com/api/resource/{{faker 'string.uuid'}}\",\n      \"properties_List\": {\n        \"ImagingTechnique\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}EO{{/case}}{{#case 2}}SAR{{/case}}{{#case 3}}IR{{/case}}{{/switch}}\",\n        \"Sensor\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}SAR-X{{/case}}{{#case 2}}OPTICAL{{/case}}{{#case 3}}MULTI-SPECTRAL{{/case}}{{/switch}}\",\n        \"Source\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}SATELLITE{{/case}}{{#case 2}}DRONE{{/case}}{{#case 3}}AIRCRAFT{{/case}}{{/switch}}\",\n        \"Resolution\": {{faker 'number.float' '{\"min\": 0.1, \"max\": 2.0, \"fractionDigits\": 2}'}},\n        \"type\": \"{{#switch (oneOf (array 1 2 3 4 5))}}{{#case 1}}commercial{{/case}}{{#case 2}}urban{{/case}}{{#case 3}}residential{{/case}}{{#case 4}}industrial{{/case}}{{#case 5}}tourism{{/case}}{{/switch}}\",\n        \"density\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}high{{/case}}{{#case 2}}medium{{/case}}{{#case 3}}low{{/case}}{{/switch}}\"\n      }\n    },\n    {\n      \"classification\": {\n        \"clearence_level\": \"UNCLASSIFIED\",\n        \"publish_procedure\": \"STANDARD\",\n        \"triangle\": \"{{faker 'string.alphanumeric' 3}}\"\n      },\n      \"date\": \"{{dateFormat (now) 'YYYY-MM-DDTHH:mm:ss'}}Z\",\n      \"exclusive_id\": {\n        \"data_store_name\": \"ElasticDataStore01\",\n        \"entity_id\": \"{{faker 'string.uuid'}}\",\n        \"layer_id\": \"layer_{{faker 'number.int' '{\\\"min\\\": 1000, \\\"max\\\": 9999}'}}\"\n      },\n      \"geo\": {\n        \"wkt\": \"POLYGON((35.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 32.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 35.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 32.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 35.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 32.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 35.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 32.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 35.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}} 32.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}))\"      },\n      \"Link\": \"https://example.com/api/resource/{{faker 'string.uuid'}}\",\n      \"properties_List\": {\n        \"ImagingTechnique\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}EO{{/case}}{{#case 2}}SAR{{/case}}{{#case 3}}IR{{/case}}{{/switch}}\",\n        \"Sensor\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}SAR-X{{/case}}{{#case 2}}OPTICAL{{/case}}{{#case 3}}MULTI-SPECTRAL{{/case}}{{/switch}}\",\n        \"Source\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}SATELLITE{{/case}}{{#case 2}}DRONE{{/case}}{{#case 3}}AIRCRAFT{{/case}}{{/switch}}\",\n        \"Resolution\": {{faker 'number.float' '{\"min\": 0.1, \"max\": 2.0, \"fractionDigits\": 2}'}},\n        \"type\": \"{{#switch (oneOf (array 1 2 3 4 5))}}{{#case 1}}commercial{{/case}}{{#case 2}}urban{{/case}}{{#case 3}}residential{{/case}}{{#case 4}}industrial{{/case}}{{#case 5}}tourism{{/case}}{{/switch}}\",\n        \"density\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}high{{/case}}{{#case 2}}medium{{/case}}{{#case 3}}low{{/case}}{{/switch}}\"\n      }\n    },\n    {\n      \"classification\": {\n        \"clearence_level\": \"UNCLASSIFIED\",\n        \"publish_procedure\": \"STANDARD\",\n        \"triangle\": \"{{faker 'string.alphanumeric' 3}}\"\n      },\n      \"date\": \"{{dateFormat (now) 'YYYY-MM-DDTHH:mm:ss'}}Z\",\n      \"exclusive_id\": {\n        \"data_store_name\": \"ElasticDataStore01\",\n        \"entity_id\": \"{{faker 'string.uuid'}}\",\n        \"layer_id\": \"layer_{{faker 'number.int' '{\\\"min\\\": 1000, \\\"max\\\": 9999}'}}\"\n      },\n      \"geo\": {\n        \"wkt\": \"POLYGON((34.{{faker 'number.int' '{\\\"min\\\": 60, \\\"max\\\": 99}'}} 29.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 60, \\\"max\\\": 99}'}} 29.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 60, \\\"max\\\": 99}'}} 29.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 60, \\\"max\\\": 99}'}} 29.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}, 34.{{faker 'number.int' '{\\\"min\\\": 60, \\\"max\\\": 99}'}} 29.{{faker 'number.int' '{\\\"min\\\": 10, \\\"max\\\": 99}'}}))\"      },\n      \"Link\": \"https://example.com/api/resource/{{faker 'string.uuid'}}\",\n      \"properties_List\": {\n        \"ImagingTechnique\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}EO{{/case}}{{#case 2}}SAR{{/case}}{{#case 3}}IR{{/case}}{{/switch}}\",\n        \"Sensor\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}SAR-X{{/case}}{{#case 2}}OPTICAL{{/case}}{{#case 3}}MULTI-SPECTRAL{{/case}}{{/switch}}\",\n        \"Source\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}SATELLITE{{/case}}{{#case 2}}DRONE{{/case}}{{#case 3}}AIRCRAFT{{/case}}{{/switch}}\",\n        \"Resolution\": {{faker 'number.float' '{\"min\": 0.1, \"max\": 2.0, \"fractionDigits\": 2}'}},\n        \"type\": \"{{#switch (oneOf (array 1 2 3 4 5))}}{{#case 1}}commercial{{/case}}{{#case 2}}urban{{/case}}{{#case 3}}residential{{/case}}{{#case 4}}industrial{{/case}}{{#case 5}}tourism{{/case}}{{/switch}}\",\n        \"density\": \"{{#switch (oneOf (array 1 2 3))}}{{#case 1}}high{{/case}}{{#case 2}}medium{{/case}}{{#case 3}}low{{/case}}{{/switch}}\"\n      }\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Success - Random overlays",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "status-endpoint-001"
+    },
+    {
+      "type": "route",
+      "uuid": "health-endpoint-001"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    },
+    {
+      "key": "Access-Control-Allow-Methods",
+      "value": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+    },
+    {
+      "key": "Access-Control-Allow-Headers",
+      "value": "Content-Type, Origin, Accept, Authorization, Content-Length, X-Requested-With"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": []
+}

@@ -128,7 +128,7 @@
 
 <!-- Tickets Panel - Right Side with Dark Theme -->
 <div
-  class="bg-gray-950 box-border flex flex-col gap-1.5 h-full items-end overflow-hidden p-1 relative rounded-lg shrink-0 w-full flex-1"
+  class="bg-gray-950 box-border flex flex-col gap-1.5 h-full items-end overflow-y-auto p-1 relative rounded-lg shrink-0 w-full flex-1"
   style="min-height: 600px;"
   dir="rtl"
 >

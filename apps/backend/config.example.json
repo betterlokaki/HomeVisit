@@ -1,0 +1,15 @@
+{
+  "enrichmentService": {
+    "url": "https://your-enrichment-service.com/api/enrich",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer YOUR_API_KEY"
+    },
+    "requestKeys": {
+      "outerKey": "your_outer_key",
+      "geometryKey": "your_geometry_key",
+      "siteNamesKey": "your_site_names_key",
+      "dateKey": "your_date_key"
+    }
+  }
+}

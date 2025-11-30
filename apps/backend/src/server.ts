@@ -10,12 +10,24 @@ import swaggerUi from "swagger-ui-express";
 import { config } from "./config/env.js";
 import { CORS_ORIGINS, REQUEST_JSON_LIMIT } from "./config/constants.js";
 import { logger } from "./middleware/logger.js";
-import sitesRoutes from "./routes/sitesRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
 import { setupErrorHandlers } from "./middleware/errorHandlers.js";
 import { setupHealthCheck } from "./routes/health.js";
 import { statusRefreshScheduler } from "./services/statusRefreshScheduler.js";
 import { swaggerSpec } from "./swagger.js";
+import { loadEnrichmentConfig } from "./config/enrichmentConfig.js";
+
+// Load enrichment config BEFORE importing routes (which instantiate controllers)
+try {
+  loadEnrichmentConfig();
+  logger.info("✅ Enrichment config loaded successfully");
+} catch (error) {
+  logger.error("⚠️ Failed to load enrichment config", error);
+  process.exit(1);
+}
+
+// Import routes AFTER config is loaded
+const sitesRoutes = (await import("./routes/sitesRoutes.js")).default;
+const authRoutes = (await import("./routes/authRoutes.js")).default;
 
 const app = express();
 

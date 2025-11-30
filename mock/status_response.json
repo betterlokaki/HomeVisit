@@ -1,0 +1,9 @@
+{
+  "this also can be randomly": [
+    {
+      "siteName": "Site A",
+      "status": "Full", // Possible values: Full, Partial, No,
+      "projectLink": "http://example.com/projectA"
+    }
+  ]
+}
