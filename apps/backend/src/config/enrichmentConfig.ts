@@ -4,8 +4,7 @@ import { logger } from "../middleware/logger.js";
 
 export interface RequestKeys {
   outerKey: string;
-  geometryKey: string;
-  siteNamesKey: string;
+  dataKey: string;
   dateKey: string;
 }
 

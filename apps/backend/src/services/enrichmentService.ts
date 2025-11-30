@@ -33,12 +33,11 @@ export class EnrichmentService {
     dateFrom: string,
     dateTo: string
   ): EnrichmentRequestBody {
-    const { outerKey, geometryKey, siteNamesKey, dateKey } = this.requestKeys;
+    const { outerKey, dataKey, dateKey } = this.requestKeys;
 
     return {
       [outerKey]: [
-        { [geometryKey]: { texts: geometries } },
-        { [siteNamesKey]: { texts: siteNames } },
+        { [dataKey]: { texts: geometries, text_id: siteNames } },
         { [dateKey]: { StartTime: { DateFrom: dateFrom, DateTo: dateTo } } },
       ],
     };

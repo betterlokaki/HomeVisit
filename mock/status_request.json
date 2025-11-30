@@ -3,13 +3,9 @@
     {
       "this created randomly": {
         // # List of wkts
-        "texts": []
-      }
-    },
-    {
-      "this created randomly 2 (the jey would be something random)": {
-        // List of site names
-        "texts": []
+        "texts": [],
+        // List of sites names
+        "text_id": []
       }
     },
     {

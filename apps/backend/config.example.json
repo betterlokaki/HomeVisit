@@ -7,8 +7,7 @@
     },
     "requestKeys": {
       "outerKey": "your_outer_key",
-      "geometryKey": "your_geometry_key",
-      "siteNamesKey": "your_site_names_key",
+      "dataKey": "your_data_key",
       "dateKey": "your_date_key"
     }
   }
