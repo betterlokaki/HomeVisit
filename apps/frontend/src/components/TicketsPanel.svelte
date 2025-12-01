@@ -148,9 +148,9 @@
       style="background-color: #1A1A1A;"
     >
       <div class="flex gap-1.5 items-center relative shrink-0 w-full">
-        <h2 class="text-xl font-bold text-white">ביקורי אתרים</h2>
+        <h2 class="text-xl font-bold text-white">ביקורים</h2>
         <span class="text-sm text-gray-400">
-          {cards.length} אתרים
+          {cards.length} בתים
         </span>
       </div>
 

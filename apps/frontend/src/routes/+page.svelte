@@ -36,7 +36,7 @@
   <div class="max-w-2xl w-full">
     <!-- Title -->
     <div class="text-center mb-12">
-      <h1 class="text-4xl font-bold text-white mb-2">ביקורי אתרים</h1>
+      <h1 class="text-4xl font-bold text-white mb-2">ביקורי בית</h1>
       <p class="text-gray-400">בחר קבוצה להתחיל</p>
     </div>
 

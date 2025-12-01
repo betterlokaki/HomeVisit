@@ -5,7 +5,7 @@ dotenv.config();
 export default defineConfig({
   plugins: [sveltekit()],
   server: {
-    port: 5147,
+    port: 80,
     host: "0.0.0.0",
     allowedHosts: process.env
       .VITE_ALLOWED_HOSTS!.split(",")
