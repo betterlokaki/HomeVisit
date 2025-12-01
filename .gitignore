@@ -9,7 +9,7 @@ patches
 dist/
 build/
 .vite/
-postgres/db/init.sql
+.postgres/db/
 # Logs
 *.log
 npm-debug.log*
