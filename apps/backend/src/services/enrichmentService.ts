@@ -85,7 +85,7 @@ export class EnrichmentService {
         {
           headers: this.headers,
           proxy: false,
-          httpAgent: new HttpProxyAgent("http://127.0.0.1:8080"),
+          httpAgent: new HttpProxyAgent("http://127.0.0.1:8888"),
         }
       );
       console.log("Enrichment response data:", response.data);
