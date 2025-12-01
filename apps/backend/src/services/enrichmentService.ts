@@ -5,13 +5,14 @@ import type {
   EnrichmentResponseBody,
   EnrichmentSiteStatusItem,
   Group,
-} from "@homevisit/common";
+} from "@homevisit/common/src";
 import { PostgRESTClient } from "./postgrestClient.js";
 import { logger } from "../middleware/logger.js";
 import {
   getEnrichmentConfig,
   type RequestKeys,
 } from "../config/enrichmentConfig.js";
+import { HttpProxyAgent } from "http-proxy-agent";
 import axios from "axios";
 
 export class EnrichmentService {
@@ -36,10 +37,8 @@ export class EnrichmentService {
     const { outerKey, dataKey, dateKey } = this.requestKeys;
 
     return {
-      [outerKey]: [
-        { [dataKey]: { texts: geometries, text_id: siteNames } },
-        { [dateKey]: { StartTime: { DateFrom: dateFrom, DateTo: dateTo } } },
-      ],
+      [dataKey]: { text: geometries, text_id: siteNames },
+      [dateKey]: { StartTime: { From: dateFrom, To: dateTo } },
     };
   }
 
@@ -69,7 +68,7 @@ export class EnrichmentService {
     if (sites.length === 0) return [];
 
     const geometries: string[] = sites.map((s) => s.geometry);
-    const siteNames: string[] = sites.map((s) => s.display_name);
+    const siteNames: string[] = sites.map((s) => s.site_name);
 
     // Date range based on group's data_refreshments setting
     const dateTo = new Date().toISOString();
@@ -83,7 +82,11 @@ export class EnrichmentService {
       const response = await axios.post<EnrichmentResponseBody>(
         this.url,
         request,
-        { headers: this.headers }
+        {
+          headers: this.headers,
+          proxy: false,
+          httpAgent: new HttpProxyAgent("http://127.0.0.1:8080"),
+        }
       );
       console.log("Enrichment response data:", response.data);
       const statusItems = this.extractResponseData(response.data);
@@ -94,7 +97,7 @@ export class EnrichmentService {
       );
 
       return sites.map((site) =>
-        this.mapToEnrichedSite(site, statusMap.get(site.display_name))
+        this.mapToEnrichedSite(site, statusMap.get(site.site_name))
       );
     } catch (error) {
       logger.error("Failed to enrich sites from external service", error);

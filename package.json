@@ -5,12 +5,5 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "scripts": {
-    "mock": "mockoon-cli start --data ./mock/mockoon-env.json",
-    "mock:status": "mockoon-cli start --data ./mock/mockoon-env.json --port 5002"
-  },
-  "devDependencies": {
-    "@mockoon/cli": "^9.4.0"
-  }
+  ]
 }

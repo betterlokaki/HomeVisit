@@ -101,9 +101,12 @@
 
 <!-- Simple card with just the lightning bolt button at top-left -->
 <div
-  class="bg-gray-800 border {isSelected
+  class="visit-card border {isSelected
     ? 'border-blue-400 shadow-lg shadow-blue-400/50 scale-[1.03]'
-    : 'border-gray-700'} pl-12 pr-0 rounded-lg w-full min-h-[100px] relative transition-all duration-300 ease-out hover:scale-102 hover:shadow-xl hover:shadow-blue-400/30 hover:border-blue-300 cursor-default"
+    : ''} pl-12 pr-0 rounded-lg w-full min-h-[100px] relative transition-all duration-300 ease-out hover:scale-102 hover:shadow-xl hover:shadow-blue-400/30 hover:border-blue-300 cursor-default"
+  style="background-color: #1A1A1A; border-color: {isSelected
+    ? ''
+    : '#434343'};"
   dir="rtl"
   on:click={onCardClick}
   on:keydown={(e) => handleKeyDown(e, onCardClick)}

@@ -49,23 +49,36 @@
 
 <!-- Root Container - RTL Layout with Dark Theme -->
 <div
-  class="flex gap-[4px] items-stretch justify-end relative w-full h-screen bg-black"
+  class="flex flex-col w-full h-screen"
+  style="background-color: #1A1A1A;"
   dir="rtl"
 >
-  <!-- Tickets Panel (Right) - 1/3 width -->
-  <div class="w-1/3 h-full flex-shrink-0 overflow-hidden">
-    <TicketsPanel
-      {groupName}
-      cards={cardData}
-      loading={isLoading}
-      on:cardSelect={(e) => (selectedSiteId = e.detail)}
-    />
-  </div>
-
-  <!-- Map Container (Left) - 2/3 width -->
-  <div
-    class="w-2/3 h-full bg-gray-900 box-border content-stretch flex flex-col gap-[24px] items-end overflow-clip p-[12px] flex-shrink-0"
+  <!-- Full Width Header -->
+  <header
+    class="shrink-0 p-3 flex items-center justify-between w-full"
+    style="background-color: #1A1A1A; border-bottom: 1px solid #434343;"
   >
-    <MapContainer bind:selectedSiteId />
+    <h1 class="text-xl font-bold text-white">ניהול אתרים</h1>
+  </header>
+
+  <!-- Main Content Area -->
+  <div class="flex gap-2 items-stretch justify-end flex-1 overflow-hidden p-2">
+    <!-- Tickets Panel (Right) - 35% width -->
+    <div class="w-[35%] h-full flex-shrink-0 overflow-hidden">
+      <TicketsPanel
+        {groupName}
+        cards={cardData}
+        loading={isLoading}
+        on:cardSelect={(e) => (selectedSiteId = e.detail)}
+      />
+    </div>
+
+    <!-- Map Container (Left) - 65% width -->
+    <div
+      class="w-[65%] h-full box-border content-stretch flex flex-col gap-6 items-end overflow-clip p-3 flex-shrink-0"
+      style="background-color: #1A1A1A;"
+    >
+      <MapContainer bind:selectedSiteId />
+    </div>
   </div>
 </div>
