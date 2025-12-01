@@ -140,30 +140,6 @@
   style="min-height: 600px; background-color: #1A1A1A;"
   dir="rtl"
 >
-  <!-- Progress Bar -->
-  <div class="shrink-0 p-1 pb-0" style="background-color: #1A1A1A;">
-    <div class="mt-2 px-1">
-      <div class="flex items-center justify-between mb-1">
-        <span class="text-xs text-gray-400">התקדמות ביקורים</span>
-        <span class="text-xs font-bold text-blue-400">{progressPercent}%</span>
-      </div>
-      <div
-        class="w-full h-2 rounded-full overflow-hidden"
-        style="background-color: #434343;"
-      >
-        <div
-          class="h-full rounded-full transition-all duration-500 ease-out"
-          style="width: {progressPercent}%; background-color: #3B82F6;"
-        ></div>
-      </div>
-      <div class="flex items-center justify-between mt-1">
-        <span class="text-xs text-gray-500"
-          >{completedCount} מתוך {totalCount} הושלמו</span
-        >
-      </div>
-    </div>
-  </div>
-
   <!-- Scrollable Content Area -->
   <div class="scrollable-content flex-1 overflow-y-auto p-1 pt-2">
     <!-- Title Section -->
@@ -235,6 +211,29 @@
         >
           בוצע חלקית
         </button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full mt-2">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs text-gray-400">התקדמות ביקורים</span>
+          <span class="text-xs font-bold text-blue-400">{progressPercent}%</span
+          >
+        </div>
+        <div
+          class="w-full h-2 rounded-full overflow-hidden"
+          style="background-color: #434343;"
+        >
+          <div
+            class="h-full rounded-full transition-all duration-500 ease-out"
+            style="width: {progressPercent}%; background-color: #3B82F6;"
+          ></div>
+        </div>
+        <div class="flex items-center justify-between mt-1">
+          <span class="text-xs text-gray-500"
+            >{completedCount} מתוך {totalCount} הושלמו</span
+          >
+        </div>
       </div>
     </div>
 

@@ -11,7 +11,7 @@
   <div
     class="flex flex-1 gap-1 items-center justify-start min-w-0 relative shrink-0"
   >
-    <div class="text-base font-bold text-white truncate">ניהול אתרים</div>
+    <div class="text-base font-bold text-white truncate">ניהול בתים</div>
   </div>
   <div class="flex-shrink-0">
     <img
