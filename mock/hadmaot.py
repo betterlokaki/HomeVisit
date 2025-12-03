@@ -6,6 +6,7 @@ A simple Flask-based REST API with basic structure
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
+import random
 from datetime import datetime
 
 # Initialize Flask app
@@ -16,7 +17,33 @@ CORS(app)
 
 # Configuration
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
-app.config['PORT'] = int(os.getenv('PORT', 5001))
+app.config['PORT'] = int(os.getenv('PORT', 5002))
+
+# Status constants
+STATUS_VALUES = ["Full", "Partial", "No"]
+
+
+def extract_site_names(request_body: dict) -> list[str]:
+    """
+    Extract site names (text_id) from the nested request structure.
+    The request has dynamic keys, so we search for the object containing 'text_id'.
+    """
+    for key, value in request_body.items():
+        if isinstance(value, dict) and 'text_id' in value:
+            return value.get('text_id', [])
+    return []
+
+
+def generate_status_item(site_name: str) -> dict:
+    """
+    Generate a random status response item for a given site name.
+    """
+    return {
+        "siteName": site_name,
+        "status": random.choice(STATUS_VALUES),
+        "projectLink": f"http://example.com/project/{site_name.replace(' ', '_')}"
+    }
+
 
 # Mock overlay data transformed to match answer_by_hapuch schema
 # All overlays intersect with database site polygons
@@ -235,6 +262,20 @@ def answer_by_hapuch():
     """Health check endpoint with overlay data"""
     return jsonify({"entities_list": MOCK_OVERLAYS}), 200
 
+
+@app.route('/status', methods=['POST'])
+def get_status():
+    """
+    Status endpoint that accepts site names and returns random status responses.
+    Request format: { "dataKey": { "text": [...], "text_id": ["SiteA", "SiteB"] }, ... }
+    Response format: { "statusResults": [{ "siteName": "...", "status": "...", "projectLink": "..." }] }
+    """
+    request_body = request.get_json() or {}
+    site_names = extract_site_names(request_body)
+    
+    status_items = [generate_status_item(name) for name in site_names]
+    
+    return jsonify({"statusResults": status_items}), 200
 
 
 # ============================================================================

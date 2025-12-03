@@ -184,8 +184,8 @@
           class="font-normal text-xs leading-3 {getUpdatedStatusDisplay(
             card.updatedStatus,
             card.seen_status
-          ).textColor} text-right"
-          style="font-size: 10px;"
+          ).textColor} text-center"
+          style="font-size: 12px;"
         >
           {getUpdatedStatusDisplay(card.updatedStatus, card.seen_status).text}
         </p>

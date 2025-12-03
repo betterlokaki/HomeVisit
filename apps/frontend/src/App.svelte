@@ -8,6 +8,7 @@
   import MapContainer from "./components/MapContainer.svelte";
   import TicketsPanel from "./components/TicketsPanel.svelte";
   import Header from "./components/Header.svelte";
+  import ProgressBar from "./components/ProgressBar.svelte";
   import { visitStore } from "./stores/visitStore";
   import { loadFilters } from "./utils/filterStorage";
 
@@ -20,8 +21,6 @@
     (card) => card.seen_status === "Seen"
   ).length;
   $: totalCount = cardData.length;
-  $: progressPercent =
-    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   onMount(async () => {
     // Load initial filters from localStorage
@@ -51,27 +50,8 @@
   <div class="shrink-0 p-2 pb-0" style="background-color: #1A1A1A;">
     <Header />
 
-    <!-- Progress Bar - Full Width -->
-    <div class="mt-2 px-1">
-      <div class="flex items-center justify-between mb-1">
-        <span class="text-xs text-gray-400">התקדמות ביקורים</span>
-        <span class="text-xs font-bold text-blue-400">{progressPercent}%</span>
-      </div>
-      <div
-        class="w-full h-2 rounded-full overflow-hidden"
-        style="background-color: #434343;"
-      >
-        <div
-          class="h-full rounded-full transition-all duration-500 ease-out"
-          style="width: {progressPercent}%; background-color: #3B82F6;"
-        ></div>
-      </div>
-      <div class="flex items-center justify-between mt-1">
-        <span class="text-xs text-gray-500"
-          >{completedCount} מתוך {totalCount} הושלמו</span
-        >
-      </div>
-    </div>
+    <!-- Progress Bar Component -->
+    <ProgressBar {completedCount} {totalCount} />
   </div>
 
   <!-- Main Content Area -->
