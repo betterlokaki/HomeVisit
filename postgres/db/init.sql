@@ -615,3 +615,258 @@ BEGIN
 END $$;
 
 GRANT EXECUTE ON FUNCTION public.update_site_history(VARCHAR, VARCHAR, DATE, seen_status) TO anon;
+
+-- ============================================================================
+-- ADDITIONAL SAMPLE DATA: 5minutely Group and Site History
+-- ============================================================================
+
+/** Insert 5minutely group (300000ms = 5 minutes) */
+INSERT INTO groups (group_name, data_refreshments)
+VALUES
+  ('5minutely Group', 300000)
+ON CONFLICT DO NOTHING;
+
+/** Insert users for 5minutely group (group_id = 3) */
+INSERT INTO users (group_id, username, display_name)
+VALUES 
+  (3, 'fast_user1', 'משתמש מהיר 1'),
+  (3, 'fast_user2', 'משתמש מהיר 2')
+ON CONFLICT DO NOTHING;
+
+/** Insert sites for 5minutely group */
+INSERT INTO sites (site_name, group_id, user_id, seen_status, geometry)
+VALUES
+  -- Tokyo (6 points) - fast_user1
+  (
+    'Tokyo',
+    3,
+    5,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((139.6 35.6, 139.8 35.7, 140.0 35.65, 139.95 35.55, 139.75 35.5, 139.6 35.6))'),
+      4326
+    )
+  ),
+  -- Sydney (7 points) - fast_user2
+  (
+    'Sydney',
+    3,
+    6,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((151.0 -33.9, 151.1 -33.85, 151.25 -33.8, 151.3 -33.85, 151.25 -33.95, 151.1 -34.0, 151.0 -33.9))'),
+      4326
+    )
+  ),
+  -- Singapore (6 points) - fast_user1
+  (
+    'Singapore',
+    3,
+    5,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((103.7 1.2, 103.85 1.35, 104.0 1.3, 103.95 1.2, 103.8 1.15, 103.7 1.2))'),
+      4326
+    )
+  ),
+  -- Dubai (7 points) - fast_user2
+  (
+    'Dubai',
+    3,
+    6,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((55.1 25.0, 55.2 25.1, 55.35 25.15, 55.4 25.1, 55.35 25.0, 55.2 24.95, 55.1 25.0))'),
+      4326
+    )
+  ),
+  -- Mumbai (6 points) - fast_user1
+  (
+    'Mumbai',
+    3,
+    5,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((72.8 18.9, 72.9 19.0, 73.0 19.05, 72.95 18.95, 72.85 18.88, 72.8 18.9))'),
+      4326
+    )
+  ),
+  -- Hong Kong (7 points) - fast_user2
+  (
+    'Hong Kong',
+    3,
+    6,
+    'Not Seen',
+    ST_SetSRID(
+      ST_GeomFromText('POLYGON((114.0 22.2, 114.1 22.3, 114.25 22.35, 114.3 22.3, 114.25 22.2, 114.1 22.15, 114.0 22.2))'),
+      4326
+    )
+  )
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- SITE HISTORY DATA (6 random dates for each group)
+-- ============================================================================
+
+/** Insert site history for Weekly Refresh Group (group_id = 1) sites */
+-- New York (site_id 1)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (1, 'Seen', '2025-11-01'),
+  (1, 'Partial', '2025-11-08'),
+  (1, 'Seen', '2025-11-15'),
+  (1, 'Not Seen', '2025-11-22'),
+  (1, 'Seen', '2025-11-29'),
+  (1, 'Partial', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Egypt (site_id 2)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (2, 'Partial', '2025-10-15'),
+  (2, 'Seen', '2025-10-22'),
+  (2, 'Seen', '2025-11-05'),
+  (2, 'Not Seen', '2025-11-12'),
+  (2, 'Partial', '2025-11-26'),
+  (2, 'Seen', '2025-12-02')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Tel Aviv (site_id 3)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (3, 'Seen', '2025-10-01'),
+  (3, 'Seen', '2025-10-20'),
+  (3, 'Partial', '2025-11-03'),
+  (3, 'Seen', '2025-11-17'),
+  (3, 'Seen', '2025-11-28'),
+  (3, 'Partial', '2025-12-01')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Jerusalem (site_id 4)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (4, 'Not Seen', '2025-09-25'),
+  (4, 'Partial', '2025-10-10'),
+  (4, 'Seen', '2025-10-28'),
+  (4, 'Seen', '2025-11-15'),
+  (4, 'Partial', '2025-11-25'),
+  (4, 'Seen', '2025-12-02')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Haifa (site_id 5)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (5, 'Seen', '2025-10-05'),
+  (5, 'Seen', '2025-10-19'),
+  (5, 'Partial', '2025-11-02'),
+  (5, 'Not Seen', '2025-11-16'),
+  (5, 'Seen', '2025-11-30'),
+  (5, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Beer Sheva (site_id 6)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (6, 'Partial', '2025-10-08'),
+  (6, 'Seen', '2025-10-22'),
+  (6, 'Seen', '2025-11-05'),
+  (6, 'Partial', '2025-11-19'),
+  (6, 'Seen', '2025-11-27'),
+  (6, 'Not Seen', '2025-12-01')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+/** Insert site history for Daily Check Group (group_id = 2) sites */
+-- Paris (site_id 10)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (10, 'Seen', '2025-11-28'),
+  (10, 'Seen', '2025-11-29'),
+  (10, 'Partial', '2025-11-30'),
+  (10, 'Seen', '2025-12-01'),
+  (10, 'Not Seen', '2025-12-02'),
+  (10, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- London (site_id 11)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (11, 'Partial', '2025-11-27'),
+  (11, 'Seen', '2025-11-28'),
+  (11, 'Seen', '2025-11-29'),
+  (11, 'Not Seen', '2025-11-30'),
+  (11, 'Partial', '2025-12-02'),
+  (11, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Berlin (site_id 12)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (12, 'Seen', '2025-11-26'),
+  (12, 'Partial', '2025-11-28'),
+  (12, 'Seen', '2025-11-30'),
+  (12, 'Seen', '2025-12-01'),
+  (12, 'Partial', '2025-12-02'),
+  (12, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Amsterdam (site_id 13)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (13, 'Not Seen', '2025-11-25'),
+  (13, 'Seen', '2025-11-27'),
+  (13, 'Seen', '2025-11-29'),
+  (13, 'Partial', '2025-12-01'),
+  (13, 'Seen', '2025-12-02'),
+  (13, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+/** Insert site history for 5minutely Group (group_id = 3) sites */
+-- Tokyo (site_id 18)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (18, 'Seen', '2025-11-28'),
+  (18, 'Partial', '2025-11-29'),
+  (18, 'Seen', '2025-11-30'),
+  (18, 'Not Seen', '2025-12-01'),
+  (18, 'Seen', '2025-12-02'),
+  (18, 'Partial', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Sydney (site_id 19)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (19, 'Partial', '2025-11-27'),
+  (19, 'Seen', '2025-11-29'),
+  (19, 'Seen', '2025-11-30'),
+  (19, 'Partial', '2025-12-01'),
+  (19, 'Seen', '2025-12-02'),
+  (19, 'Not Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Singapore (site_id 20)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (20, 'Seen', '2025-11-26'),
+  (20, 'Seen', '2025-11-28'),
+  (20, 'Partial', '2025-11-30'),
+  (20, 'Seen', '2025-12-01'),
+  (20, 'Seen', '2025-12-02'),
+  (20, 'Partial', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Dubai (site_id 21)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (21, 'Not Seen', '2025-11-25'),
+  (21, 'Partial', '2025-11-28'),
+  (21, 'Seen', '2025-11-30'),
+  (21, 'Seen', '2025-12-01'),
+  (21, 'Partial', '2025-12-02'),
+  (21, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Mumbai (site_id 22)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (22, 'Seen', '2025-11-24'),
+  (22, 'Seen', '2025-11-27'),
+  (22, 'Seen', '2025-11-29'),
+  (22, 'Partial', '2025-12-01'),
+  (22, 'Not Seen', '2025-12-02'),
+  (22, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
+
+-- Hong Kong (site_id 23)
+INSERT INTO sites_history (site_id, status, recorded_date) VALUES
+  (23, 'Partial', '2025-11-23'),
+  (23, 'Seen', '2025-11-26'),
+  (23, 'Not Seen', '2025-11-29'),
+  (23, 'Seen', '2025-12-01'),
+  (23, 'Seen', '2025-12-02'),
+  (23, 'Seen', '2025-12-03')
+ON CONFLICT (site_id, recorded_date) DO NOTHING;
