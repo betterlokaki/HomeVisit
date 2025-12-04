@@ -1,21 +1,21 @@
 import { Request, Response } from "express";
-import { UserService } from "../services/userService.js";
-import { PostgRESTClient } from "../services/postgrestClient.js";
+import { UserService } from "../services/userService.ts";
+import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
 import {
   sendSuccess,
   sendError,
   sendValidationError,
-} from "../utils/responseHelper.js";
-import { logger } from "../middleware/logger.js";
+} from "../utils/responseHelper.ts";
+import { logger } from "../middleware/logger.ts";
 
 /**
  * Auth Controller - Single Responsibility: Authentication
  */
-class AuthController {
+export class AuthController {
   private userService: UserService;
 
-  constructor() {
-    this.userService = new UserService(new PostgRESTClient());
+  constructor(postgrest: IPostgRESTClient) {
+    this.userService = new UserService(postgrest);
   }
 
   async login(req: Request, res: Response): Promise<void> {
@@ -35,5 +35,3 @@ class AuthController {
     }
   }
 }
-
-export const authController = new AuthController();

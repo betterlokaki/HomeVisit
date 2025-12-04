@@ -1,66 +1,28 @@
-import type { FilterSchema } from "@homevisit/common/src/models/OverlaySearch.js";
-import type { ElasticProviderOverlay } from "@homevisit/common/src/models/Overlay.js";
+/**
+ * Overlay Service
+ * Single Responsibility: Fetch overlays from external elastic provider
+ */
+
+import type { FilterSchema } from "@homevisit/common/src/models/OverlaySearch.ts";
+import type { ElasticProviderOverlay } from "@homevisit/common/src/models/Overlay.ts";
 import axios from "axios";
 import {
   ELASTIC_PROVIDER_BASE_URL,
   ELASTIC_PROVIDER_ENDPOINT,
-} from "../config/constants.js";
-import { config } from "../config/env.js";
-
-function createSearchFilter(wkt: string, start: Date, end: Date): FilterSchema {
-  return {
-    filter: {
-      logical_operators: {
-        AND: [
-          {
-            match: {
-              ImagingTechnique: {
-                type: "IN",
-                values: ["EO"],
-              },
-            },
-          },
-          {
-            geo_intersect: {
-              geo: {
-                type: "IN",
-                values: [wkt],
-              },
-            },
-          },
-        ],
-      },
-      range: {
-        date: {
-          type: "IN",
-          values: [
-            {
-              gte: start.toISOString(),
-              lte: end.toISOString(),
-            },
-          ],
-        },
-      },
-    },
-    sort: {
-      date: "desc",
-    },
-  };
-}
+} from "../config/constants.ts";
+import { config } from "../config/env.ts";
+import { createSearchFilter } from "./overlayFilterBuilder.ts";
 
 async function searchOverlays(
   params: FilterSchema
 ): Promise<ElasticProviderOverlay[]> {
   try {
-    // Implementation for searching overlays using the provided filter schema
     let url = `${ELASTIC_PROVIDER_BASE_URL}${ELASTIC_PROVIDER_ENDPOINT}`;
 
-    // Append query parameters if provided
     if (config.OVERLAY_SERVICE_QUERY_PARAMS) {
       url += `?${config.OVERLAY_SERVICE_QUERY_PARAMS}`;
     }
 
-    // Parse headers from env (JSON string)
     let headers: Record<string, string> = {};
     if (config.OVERLAY_SERVICE_HEADERS) {
       try {
@@ -73,8 +35,6 @@ async function searchOverlays(
     }
 
     const response = await axios.post(url, params, headers);
-
-    // Convert response to ElasticProviderOverlay[]
     const overlays: ElasticProviderOverlay[] =
       response.data.entities_list || [];
     return overlays;

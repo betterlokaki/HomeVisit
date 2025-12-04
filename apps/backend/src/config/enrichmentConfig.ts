@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { logger } from "../middleware/logger.js";
+import { logger } from "../middleware/logger.ts";
 
 export interface RequestKeys {
   outerKey: string;

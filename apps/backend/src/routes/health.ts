@@ -5,7 +5,7 @@
  */
 
 import { Express, Request, Response } from "express";
-import { config } from "../config/env.js";
+import { config } from "../config/env.ts";
 
 /**
  * Health check endpoint handler

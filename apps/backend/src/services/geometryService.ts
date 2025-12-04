@@ -1,4 +1,4 @@
-import { logger } from "../middleware/logger.js";
+import { logger } from "../middleware/logger.ts";
 
 /**
  * Geometry Service - Single Responsibility: Geometry conversions

@@ -5,9 +5,9 @@
  */
 
 import { Express, Request, Response, NextFunction } from "express";
-import { config } from "../config/env.js";
-import { logger } from "./logger.js";
-import { ERROR_FIELD, MESSAGE_FIELD } from "../config/constants.js";
+import { config } from "../config/env.ts";
+import { logger } from "./logger.ts";
+import { ERROR_FIELD, MESSAGE_FIELD } from "../config/constants.ts";
 
 /**
  * 404 Not Found handler

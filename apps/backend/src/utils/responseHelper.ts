@@ -3,12 +3,12 @@
  */
 
 import { Response } from "express";
-import { logger } from "../middleware/logger";
+import { logger } from "../middleware/logger.ts";
 import {
   RESPONSE_SUCCESS_FIELD,
   RESPONSE_DATA_FIELD,
   ERROR_FIELD,
-} from "../config/constants";
+} from "../config/constants.ts";
 
 /**
  * Send successful response

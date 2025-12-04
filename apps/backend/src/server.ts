@@ -7,14 +7,14 @@
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
-import { config } from "./config/env.js";
-import { CORS_ORIGINS, REQUEST_JSON_LIMIT } from "./config/constants.js";
-import { logger } from "./middleware/logger.js";
-import { setupErrorHandlers } from "./middleware/errorHandlers.js";
-import { setupHealthCheck } from "./routes/health.js";
-import { statusRefreshScheduler } from "./services/statusRefreshScheduler.js";
-import { swaggerSpec } from "./swagger.js";
-import { loadEnrichmentConfig } from "./config/enrichmentConfig.js";
+import { config } from "./config/env.ts";
+import { CORS_ORIGINS, REQUEST_JSON_LIMIT } from "./config/constants.ts";
+import { logger } from "./middleware/logger.ts";
+import { setupErrorHandlers } from "./middleware/errorHandlers.ts";
+import { setupHealthCheck } from "./routes/health.ts";
+import { statusRefreshScheduler } from "./services/statusRefreshScheduler.ts";
+import { swaggerSpec } from "./swagger.ts";
+import { loadEnrichmentConfig } from "./config/enrichmentConfig.ts";
 
 // Load enrichment config BEFORE importing routes (which instantiate controllers)
 try {
@@ -26,8 +26,8 @@ try {
 }
 
 // Import routes AFTER config is loaded
-const sitesRoutes = (await import("./routes/sitesRoutes.js")).default;
-const authRoutes = (await import("./routes/authRoutes.js")).default;
+const sitesRoutes = (await import("./routes/sitesRoutes.ts")).default;
+const authRoutes = (await import("./routes/authRoutes.ts")).default;
 
 const app = express();
 

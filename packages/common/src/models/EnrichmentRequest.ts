@@ -1,22 +1,18 @@
 /**
  * Enrichment Service Request Types
  * Request structure uses dynamic keys but follows a specific pattern:
- * - Item 0: geometries (WKTs) in { texts: string[] }
- * - Item 1: site names in { texts: string[] }
- * - Item 2: date range in { StartTime: { DateFrom: string, DateTo: string } }
+ * - dataKey: geometries (WKTs) in { text: string[], text_id: string[] }
+ * - dateKey: date range in { StartTime: { From: string, To: string } }
  */
 
-export interface EnrichmentGeometryItem {
-  texts: string[];
-}
-
-export interface EnrichmentSiteNamesItem {
-  texts: string[];
+export interface EnrichmentDataItem {
+  text: string[];
+  text_id: string[];
 }
 
 export interface EnrichmentDateRange {
-  DateFrom: string;
-  DateTo: string;
+  From: string;
+  To: string;
 }
 
 export interface EnrichmentDateItem {
@@ -25,13 +21,9 @@ export interface EnrichmentDateItem {
 
 /**
  * The request body sent to the enrichment service.
- * The outer key is dynamic (random), containing an array of 3 items.
+ * Uses dynamic keys for dataKey and dateKey.
  */
 export type EnrichmentRequestBody = Record<
   string,
-  [
-    Record<string, EnrichmentGeometryItem>,
-    Record<string, EnrichmentSiteNamesItem>,
-    Record<string, EnrichmentDateItem>
-  ]
+  EnrichmentDataItem | EnrichmentDateItem
 >;

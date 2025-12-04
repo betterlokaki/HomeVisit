@@ -1,12 +1,12 @@
 import type { Group } from "@homevisit/common";
-import { PostgRESTClient } from "./postgrestClient.js";
-import { logger } from "../middleware/logger.js";
+import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
+import { logger } from "../middleware/logger.ts";
 
 /**
  * Group Service - Single Responsibility: Group data operations
  */
 export class GroupService {
-  constructor(private postgrest: PostgRESTClient) {}
+  constructor(private postgrest: IPostgRESTClient) {}
 
   async getByName(name: string): Promise<Group | null> {
     try {

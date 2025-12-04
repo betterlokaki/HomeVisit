@@ -1,20 +1,14 @@
 import type { Site, SeenStatus } from "@homevisit/common";
-import { PostgRESTClient } from "./postgrestClient.js";
-import { logger } from "../middleware/logger.js";
-import { normalizeGeometryToWkt } from "../utils/geojsonToWkt.js";
+import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
+import type { SiteWithUsers } from "../interfaces/SiteDTO.ts";
+import { logger } from "../middleware/logger.ts";
+import { mapToSite, mapToSites } from "../utils/siteMapper.ts";
+
+const SITE_SELECT =
+  "site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)";
 
 export class SiteService {
-  constructor(private postgrest: PostgRESTClient) {}
-
-  private convertToWkt(geometry: any): string {
-    try {
-      return normalizeGeometryToWkt(geometry);
-    } catch (error) {
-      logger.warn("Failed to convert geometry to WKT", { geometry, error });
-      // Return empty polygon if conversion fails
-      return "POLYGON((0 0, 0 0, 0 0, 0 0))";
-    }
-  }
+  constructor(private postgrest: IPostgRESTClient) {}
 
   private async getGroupId(groupName: string): Promise<number | null> {
     const resp = await this.postgrest.get<{ group_id: number }>(
@@ -41,41 +35,21 @@ export class SiteService {
   ): string {
     const filters = [`group_id=eq.${groupId}`];
     if (userIds?.length) {
-      const list = userIds.join(",");
-      filters.push(`user_id=in.(${list})`);
+      filters.push(`user_id=in.(${userIds.join(",")})`);
     }
     if (seenStatuses?.length) {
-      const list = seenStatuses.map((s) => `"${s}"`).join(",");
-      filters.push(`seen_status=in.(${list})`);
+      filters.push(
+        `seen_status=in.(${seenStatuses.map((s) => `"${s}"`).join(",")})`
+      );
     }
-    const query = filters.join("&");
-    return `/sites?${query}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)`;
+    return `/sites?${filters.join("&")}&select=${SITE_SELECT}`;
   }
 
   async getSitesByGroup(groupId: number): Promise<Site[]> {
-    interface SiteWithUsers {
-      site_id: number;
-      site_name: string;
-      group_id: number;
-      user_id: number;
-      seen_status: string;
-      seen_date: string;
-      geometry: any;
-      users: { username: string; display_name: string };
-    }
     const resp = await this.postgrest.get<SiteWithUsers>(
-      `/sites?group_id=eq.${groupId}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)`
+      `/sites?group_id=eq.${groupId}&select=${SITE_SELECT}`
     );
-    return resp.data.map((s) => ({
-      site_id: s.site_id,
-      site_name: s.site_name,
-      group_id: s.group_id,
-      username: s.users.username,
-      display_name: s.users.display_name,
-      seen_status: s.seen_status as any,
-      seen_date: new Date(s.seen_date),
-      geometry: this.convertToWkt(s.geometry),
-    }));
+    return mapToSites(resp.data);
   }
 
   async getSitesByName(groupName: string): Promise<Site[]> {
@@ -87,20 +61,11 @@ export class SiteService {
     groupName: string,
     filterRequest: any
   ): Promise<Site[]> {
-    interface SiteWithUsers {
-      site_id: number;
-      site_name: string;
-      group_id: number;
-      user_id: number;
-      seen_status: string;
-      seen_date: string;
-      geometry: string;
-      users: { username: string; display_name: string };
-    }
     const groupId = await this.getGroupId(groupName);
     if (!groupId) return [];
+
     let userIds: number[] | undefined;
-    if (filterRequest.usernames && filterRequest.usernames.length > 0) {
+    if (filterRequest.usernames?.length > 0) {
       userIds = [];
       for (const username of filterRequest.usernames) {
         const userId = await this.getUserId(username);
@@ -108,48 +73,20 @@ export class SiteService {
       }
       if (userIds.length === 0) return [];
     }
+
     const query = this.buildQuery(groupId, userIds, filterRequest.seenStatuses);
     const resp = await this.postgrest.get<SiteWithUsers>(query);
-    return resp.data.map((s) => ({
-      site_id: s.site_id,
-      site_name: s.site_name,
-      group_id: s.group_id,
-      username: s.users.username,
-      display_name: s.users.display_name,
-      seen_status: s.seen_status as any,
-      seen_date: new Date(s.seen_date),
-      geometry: this.convertToWkt(s.geometry),
-    }));
+    return mapToSites(resp.data);
   }
 
   async getSiteByName(siteName: string): Promise<Site | null> {
-    interface SiteWithUsers {
-      site_id: number;
-      site_name: string;
-      group_id: number;
-      user_id: number;
-      seen_status: string;
-      seen_date: string;
-      geometry: string;
-      users: { username: string; display_name: string };
-    }
     const resp = await this.postgrest.get<SiteWithUsers>(
       `/sites?site_name=eq.${encodeURIComponent(
         siteName
-      )}&select=site_id,site_name,group_id,user_id,seen_status,seen_date,geometry,users(username,display_name)&limit=1`
+      )}&select=${SITE_SELECT}&limit=1`
     );
     const s = resp.data?.[0];
-    if (!s) return null;
-    return {
-      site_id: s.site_id,
-      site_name: s.site_name,
-      group_id: s.group_id,
-      username: s.users.username,
-      display_name: s.users.display_name,
-      seen_status: s.seen_status as any,
-      seen_date: new Date(s.seen_date),
-      geometry: this.convertToWkt(s.geometry),
-    };
+    return s ? mapToSite(s) : null;
   }
 
   async updateStatus(siteName: string, status: SeenStatus): Promise<boolean> {

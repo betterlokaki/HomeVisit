@@ -3,36 +3,30 @@
   import type { VisitCard } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
   import ActionButtons from "./ActionButtons.svelte";
+  import { getUpdatedStatusDisplay, formatDate } from "../utils/statusDisplay";
 
   export let card: VisitCard;
   export let isSelected: boolean = false;
 
   const dispatch = createEventDispatcher();
-
-  // Cast to any to work around type definition mismatches
   const cardData = card as any;
 
-  // Handler for card selection
   function onCardClick() {
     dispatch("select", card.site_id);
   }
 
-  // Handlers for action buttons
   async function handleCompleted() {
     await visitStore.updateCardStatus(card.site_id, "Seen");
-    // Keep card selected after status update
     dispatch("select", card.site_id);
   }
 
   async function handlePartiallyCompleted() {
     await visitStore.updateCardStatus(card.site_id, "Partial");
-    // Keep card selected after status update
     dispatch("select", card.site_id);
   }
 
   async function handleNotDone() {
     await visitStore.updateCardStatus(card.site_id, "Not Seen");
-    // Keep card selected after status update
     dispatch("select", card.site_id);
   }
 
@@ -41,61 +35,6 @@
       event.preventDefault();
       handler();
     }
-  }
-
-  // Get Hebrew status text and colors
-  function getSeenStatusDisplay(status: string) {
-    const statusMap: Record<
-      string,
-      { text: string; borderColor: string; textColor: string }
-    > = {
-      "Not Seen": {
-        text: "מחכה לביקור",
-        borderColor: "border-yellow-400",
-        textColor: "text-yellow-400",
-      },
-      Partial: {
-        text: "בוצע חלקית",
-        borderColor: "border-orange-400",
-        textColor: "text-orange-400",
-      },
-      Seen: {
-        text: "בוצע",
-        borderColor: "border-green-400",
-        textColor: "text-green-400",
-      },
-      "Not Done": {
-        text: "מחכה לביקור",
-        borderColor: "border-red-400",
-        textColor: "text-red-400",
-      },
-    };
-    return statusMap[status] || statusMap["Not Seen"];
-  }
-
-  // Get updated status display based on updatedStatus field
-  function getUpdatedStatusDisplay(updatedStatus: string, seenStatus: string) {
-    if (updatedStatus === "No") {
-      return {
-        text: "אין איסוף",
-        borderColor: "border-red-500",
-        textColor: "text-red-500",
-      };
-    }
-    return getSeenStatusDisplay(seenStatus);
-  }
-
-  // Format date function
-  function formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("he-IL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
   }
 </script>
 

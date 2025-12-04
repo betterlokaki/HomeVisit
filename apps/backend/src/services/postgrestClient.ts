@@ -1,12 +1,13 @@
 import axios from "axios";
-import { config } from "../config/env.js";
-import { logger } from "../middleware/logger.js";
+import { config } from "../config/env.ts";
+import { logger } from "../middleware/logger.ts";
+import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
 
 /**
  * Abstraction for PostgREST HTTP client
  * Single Responsibility: HTTP communication with PostgREST API
  */
-export class PostgRESTClient {
+export class PostgRESTClient implements IPostgRESTClient {
   private client = axios.create({
     baseURL: config.POSTGREST_URL || "http://localhost:3000",
     timeout: 5000,

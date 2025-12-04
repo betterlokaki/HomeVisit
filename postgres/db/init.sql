@@ -460,3 +460,158 @@ BEGIN
 END $$;
 
 GRANT EXECUTE ON FUNCTION public.refresh_expired_statuses(BIGINT) TO anon;
+
+-- ============================================================================
+-- SITES HISTORY TABLE AND RPC FUNCTIONS
+-- ============================================================================
+
+/**
+ * sites_history table - Stores historical visit status for each site
+ * 
+ * Records site status snapshots at the end of each period (daily/weekly).
+ * Uses unique constraint on (site_id, recorded_date) to allow upsert.
+ */
+CREATE TABLE IF NOT EXISTS sites_history (
+  history_id BIGSERIAL PRIMARY KEY,
+  site_id BIGINT NOT NULL,
+  status seen_status NOT NULL,
+  recorded_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  CONSTRAINT fk_history_site FOREIGN KEY (site_id) REFERENCES sites(site_id) ON DELETE CASCADE,
+  CONSTRAINT uq_site_date UNIQUE (site_id, recorded_date)
+);
+
+-- Indexes for efficient lookups
+CREATE INDEX IF NOT EXISTS idx_history_site_id ON sites_history(site_id);
+CREATE INDEX IF NOT EXISTS idx_history_recorded_date ON sites_history(recorded_date);
+
+-- Grant permissions to anon role
+GRANT SELECT, INSERT, UPDATE ON sites_history TO anon;
+GRANT USAGE, SELECT ON SEQUENCE sites_history_history_id_seq TO anon;
+
+/**
+ * upsert_site_history - Insert or update a site's history record for a specific date
+ * 
+ * @param p_site_id - ID of the site
+ * @param p_status - Status to record
+ * @param p_date - Date for the record (defaults to current date)
+ */
+CREATE OR REPLACE FUNCTION public.upsert_site_history(
+  p_site_id BIGINT,
+  p_status seen_status,
+  p_date DATE DEFAULT CURRENT_DATE
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO sites_history (site_id, status, recorded_date)
+  VALUES (p_site_id, p_status, p_date)
+  ON CONFLICT (site_id, recorded_date)
+  DO UPDATE SET status = EXCLUDED.status;
+END $$;
+
+GRANT EXECUTE ON FUNCTION public.upsert_site_history(BIGINT, seen_status, DATE) TO anon;
+
+/**
+ * save_group_statuses_to_history - Save current status of all sites in a group to history
+ * 
+ * Called before refresh_expired_statuses to preserve the status snapshot.
+ * 
+ * @param p_group_id - ID of the group whose site statuses should be saved
+ * 
+ * @returns Number of history records saved
+ */
+CREATE OR REPLACE FUNCTION public.save_group_statuses_to_history(p_group_id BIGINT)
+RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  INSERT INTO sites_history (site_id, status, recorded_date)
+  SELECT site_id, seen_status, CURRENT_DATE
+  FROM sites
+  WHERE group_id = p_group_id
+  ON CONFLICT (site_id, recorded_date)
+  DO UPDATE SET status = EXCLUDED.status;
+  
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END $$;
+
+GRANT EXECUTE ON FUNCTION public.save_group_statuses_to_history(BIGINT) TO anon;
+
+/**
+ * get_site_history_by_name_and_group - Get history records for a site by name and group
+ * 
+ * @param p_site_name - Name of the site
+ * @param p_group_name - Name of the group
+ * 
+ * @returns Table of history records with site_name included
+ */
+CREATE OR REPLACE FUNCTION public.get_site_history_by_name_and_group(
+  p_site_name VARCHAR,
+  p_group_name VARCHAR
+)
+RETURNS TABLE (
+  history_id BIGINT,
+  site_id BIGINT,
+  site_name VARCHAR,
+  status seen_status,
+  recorded_date DATE
+) LANGUAGE sql STABLE AS $$
+  SELECT 
+    h.history_id,
+    h.site_id,
+    s.site_name,
+    h.status,
+    h.recorded_date
+  FROM sites_history h
+  JOIN sites s ON h.site_id = s.site_id
+  JOIN groups g ON s.group_id = g.group_id
+  WHERE s.site_name = p_site_name
+    AND g.group_name = p_group_name
+  ORDER BY h.recorded_date DESC;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_site_history_by_name_and_group(VARCHAR, VARCHAR) TO anon;
+
+/**
+ * update_site_history - Update a specific history record by site name, group name, and date
+ * 
+ * @param p_site_name - Name of the site
+ * @param p_group_name - Name of the group
+ * @param p_date - Date of the history record to update
+ * @param p_new_status - New status to set
+ * 
+ * @returns Boolean indicating success
+ */
+CREATE OR REPLACE FUNCTION public.update_site_history(
+  p_site_name VARCHAR,
+  p_group_name VARCHAR,
+  p_date DATE,
+  p_new_status seen_status
+)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_site_id BIGINT;
+  v_updated INTEGER;
+BEGIN
+  -- Get site_id matching both site_name and group_name
+  SELECT s.site_id INTO v_site_id
+  FROM sites s
+  JOIN groups g ON s.group_id = g.group_id
+  WHERE s.site_name = p_site_name
+    AND g.group_name = p_group_name
+  LIMIT 1;
+  
+  IF v_site_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  
+  UPDATE sites_history
+  SET status = p_new_status
+  WHERE site_id = v_site_id
+    AND recorded_date = p_date;
+  
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  RETURN v_updated > 0;
+END $$;
+
+GRANT EXECUTE ON FUNCTION public.update_site_history(VARCHAR, VARCHAR, DATE, seen_status) TO anon;

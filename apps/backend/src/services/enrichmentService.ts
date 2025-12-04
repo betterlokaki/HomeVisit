@@ -5,14 +5,13 @@ import type {
   EnrichmentResponseBody,
   EnrichmentSiteStatusItem,
   Group,
-} from "@homevisit/common/src";
-import { PostgRESTClient } from "./postgrestClient.js";
-import { logger } from "../middleware/logger.js";
+} from "@homevisit/common";
+import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
+import { logger } from "../middleware/logger.ts";
 import {
   getEnrichmentConfig,
   type RequestKeys,
-} from "../config/enrichmentConfig.js";
-import { HttpProxyAgent } from "http-proxy-agent";
+} from "../config/enrichmentConfig.ts";
 import axios from "axios";
 
 export class EnrichmentService {
@@ -20,8 +19,7 @@ export class EnrichmentService {
   private headers: Record<string, string>;
   private requestKeys: RequestKeys;
 
-  constructor(private postgrest: PostgRESTClient) {
-    this.postgrest = postgrest;
+  constructor(private postgrest: IPostgRESTClient) {
     const config = getEnrichmentConfig();
     this.url = config.enrichmentService.url;
     this.headers = config.enrichmentService.headers;
@@ -34,8 +32,7 @@ export class EnrichmentService {
     dateFrom: string,
     dateTo: string
   ): EnrichmentRequestBody {
-    const { outerKey, dataKey, dateKey } = this.requestKeys;
-
+    const { dataKey, dateKey } = this.requestKeys;
     return {
       [dataKey]: { text: geometries, text_id: siteNames },
       [dateKey]: { StartTime: { From: dateFrom, To: dateTo } },
@@ -46,16 +43,12 @@ export class EnrichmentService {
     responseBody: EnrichmentResponseBody
   ): EnrichmentSiteStatusItem[] {
     const keys = Object.keys(responseBody);
-    if (keys.length === 0) {
-      logger.warn("Enrichment response has no data keys");
-      return [];
-    }
-    return responseBody[keys[0]];
+    return keys.length === 0 ? [] : responseBody[keys[0]];
   }
 
   private mapToEnrichedSite(
     site: Site,
-    statusItem: EnrichmentSiteStatusItem | undefined
+    statusItem?: EnrichmentSiteStatusItem
   ): EnrichedSite {
     return {
       ...site,
@@ -67,41 +60,31 @@ export class EnrichmentService {
   async enrichSites(sites: Site[], group: Group): Promise<EnrichedSite[]> {
     if (sites.length === 0) return [];
 
-    const geometries: string[] = sites.map((s) => s.geometry);
-    const siteNames: string[] = sites.map((s) => s.site_name);
-
-    // Date range based on group's data_refreshments setting
+    const geometries = sites.map((s) => s.geometry);
+    const siteNames = sites.map((s) => s.site_name);
     const dateTo = new Date().toISOString();
     const dateFrom = new Date(
       Date.now() - group.data_refreshments
     ).toISOString();
-    console.log("Enrichment date range:", dateFrom, "to", dateTo);
-    const request = this.buildRequest(siteNames, geometries, dateFrom, dateTo);
 
     try {
       const response = await axios.post<EnrichmentResponseBody>(
         this.url,
-        request,
+        this.buildRequest(siteNames, geometries, dateFrom, dateTo),
         {
           headers: this.headers,
           proxy: false,
-          // httpAgent: new HttpProxyAgent("http://127.0.0.1:8888"),
         }
       );
-      console.log("Enrichment response data:", response.data);
       const statusItems = this.extractResponseData(response.data);
-
-      // Map response items to sites by siteName
       const statusMap = new Map(
         statusItems.map((item) => [item.siteName, item])
       );
-
       return sites.map((site) =>
         this.mapToEnrichedSite(site, statusMap.get(site.site_name))
       );
     } catch (error) {
       logger.error("Failed to enrich sites from external service", error);
-      // Return sites with default "No" status on error
       return sites.map((site) => this.mapToEnrichedSite(site, undefined));
     }
   }

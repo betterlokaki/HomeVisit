@@ -1,125 +1,65 @@
 /**
- * Geometry Merger Utility
- *
- * Combines multiple WKT geometries into a single MultiPolygon using Turf.js
+ * Geometry Merger - Combines multiple WKT geometries into a single MultiPolygon
  */
-
-import { featureCollection, polygon } from "@turf/turf";
 import { parse } from "wellknown";
-import { logger } from "../middleware/logger.js";
+import { logger } from "../middleware/logger.ts";
 
-/**
- * Combine multiple WKT geometries into a single MultiPolygon WKT string
- *
- * @param wktGeometries - Array of WKT geometry strings (typically POLYGON)
- * @returns MultiPolygon WKT string or null if no valid geometries
- */
 export function mergeGeometriesToMultiPolygon(wktGeometries: string[]): string {
   try {
-    if (!wktGeometries || wktGeometries.length === 0) {
-      logger.warn("No geometries provided to merge");
-      return "";
-    }
+    if (!wktGeometries?.length) return "";
 
-    // Parse WKT strings or handle GeoJSON objects
     const polygons = wktGeometries
       .filter(
         (wkt) => wkt && (typeof wkt === "string" ? wkt.trim().length > 0 : true)
       )
       .map((wkt) => {
         try {
-          let parsed: any;
-          if (typeof wkt === "string") {
-            parsed = parse(wkt);
-          } else {
-            parsed = wkt;
-          }
-          if (!parsed) {
-            logger.warn("Failed to parse geometry", { wkt });
-            return null;
-          }
-          return parsed;
-        } catch (error) {
-          logger.error("Error parsing geometry", { wkt, error });
+          return typeof wkt === "string" ? parse(wkt) : wkt;
+        } catch {
           return null;
         }
       })
-      .filter((geom) => geom !== null);
+      .filter(Boolean);
 
-    if (polygons.length === 0) {
-      logger.warn("No valid polygons to merge");
-      return "";
-    }
+    if (polygons.length === 0) return "";
 
-    // Extract polygon coordinates from parsed geometries
-    const polygonCoordinates = polygons
-      .map((geom: any) => {
-        if (geom.type === "Polygon") {
-          return geom.coordinates;
-        }
-        logger.warn("Unexpected geometry type, skipping", { type: geom.type });
-        return null;
-      })
-      .filter((coords) => coords !== null);
+    const coords = polygons
+      .map((g: any) => (g.type === "Polygon" ? g.coordinates : null))
+      .filter(Boolean);
 
-    if (polygonCoordinates.length === 0) {
-      logger.warn("No valid polygon coordinates extracted");
-      return "";
-    }
+    if (coords.length === 0) return "";
 
-    // Create MultiPolygon GeoJSON
-    const multiPolygon = {
-      type: "MultiPolygon" as const,
-      coordinates: polygonCoordinates,
-    };
-
-    // Convert back to WKT
-    const wktOutput = geometryToWKT(multiPolygon);
-
-    logger.debug("Successfully merged geometries to MultiPolygon", {
-      inputCount: wktGeometries.length,
-      validCount: polygonCoordinates.length,
-    });
-
-    return wktOutput;
+    const multiPolygon = { type: "MultiPolygon" as const, coordinates: coords };
+    return geometryToWKT(multiPolygon);
   } catch (error) {
     logger.error("Error merging geometries", error);
     return "";
   }
 }
 
-/**
- * Convert GeoJSON geometry to WKT string
- */
 function geometryToWKT(geometry: any): string {
   if (geometry.type === "MultiPolygon") {
     const rings = geometry.coordinates
-      .map((polygon: number[][][]) => {
-        const polygonRings = polygon
-          .map((ring: number[][]) => {
-            const coords = ring
-              .map((coord: number[]) => `${coord[0]} ${coord[1]}`)
-              .join(", ");
-            return `(${coords})`;
-          })
-          .join(", ");
-        return `(${polygonRings})`;
-      })
+      .map(
+        (polygon: number[][][]) =>
+          `(${polygon
+            .map(
+              (ring: number[][]) =>
+                `(${ring.map((c: number[]) => `${c[0]} ${c[1]}`).join(", ")})`
+            )
+            .join(", ")})`
+      )
       .join(", ");
     return `MULTIPOLYGON(${rings})`;
   }
-
   if (geometry.type === "Polygon") {
     const rings = geometry.coordinates
-      .map((ring: number[][]) => {
-        const coords = ring
-          .map((coord: number[]) => `${coord[0]} ${coord[1]}`)
-          .join(", ");
-        return `(${coords})`;
-      })
+      .map(
+        (ring: number[][]) =>
+          `(${ring.map((c: number[]) => `${c[0]} ${c[1]}`).join(", ")})`
+      )
       .join(", ");
     return `POLYGON(${rings})`;
   }
-
   throw new Error(`Unsupported geometry type: ${geometry.type}`);
 }

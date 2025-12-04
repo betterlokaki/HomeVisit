@@ -5,7 +5,7 @@
  * Do NOT add hardcoded magic strings here - they should come from env.ts
  */
 
-import { config } from "./env.js";
+import { config } from "./env.ts";
 
 // ============================================================================
 // CORS Configuration

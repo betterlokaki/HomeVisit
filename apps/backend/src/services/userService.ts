@@ -1,13 +1,13 @@
 import type { User } from "@homevisit/common";
-import { PostgRESTClient } from "./postgrestClient.js";
-import { logger } from "../middleware/logger.js";
+import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
+import { logger } from "../middleware/logger.ts";
 
 /**
  * User Service
  * Single Responsibility: User data access and management
  */
 export class UserService {
-  constructor(private postgrest: PostgRESTClient) {}
+  constructor(private postgrest: IPostgRESTClient) {}
 
   async getOrCreateUser(groupId: number): Promise<number> {
     try {
