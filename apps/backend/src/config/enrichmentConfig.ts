@@ -14,8 +14,15 @@ export interface EnrichmentServiceConfig {
   requestKeys: RequestKeys;
 }
 
+export interface CoverUpdateServiceConfig {
+  url: string;
+  headers: Record<string, string>;
+  responseKey: string;
+}
+
 export interface EnrichmentConfig {
   enrichmentService: EnrichmentServiceConfig;
+  coverUpdateService: CoverUpdateServiceConfig;
 }
 
 let enrichmentConfig: EnrichmentConfig | null = null;

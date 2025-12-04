@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -21,6 +21,31 @@ app.config['PORT'] = int(os.getenv('PORT', 5002))
 
 # Status constants
 STATUS_VALUES = ["Full", "Partial", "No"]
+
+# Cover update status constants
+COVER_STATUS_VALUES = ["Full", "Partial", "No"]
+
+
+def generate_cover_update_history(refresh_time_seconds: int) -> list[dict]:
+    """
+    Generate random cover update history from the start of current month until today.
+    Each entry is at refresh_time intervals.
+    """
+    now = datetime.now()
+    # Start of current month
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    history = []
+    current_time = start_of_month
+    
+    while current_time <= now:
+        history.append({
+            "date": current_time.isoformat(),
+            "status": random.choice(COVER_STATUS_VALUES)
+        })
+        current_time += timedelta(seconds=refresh_time_seconds)
+    
+    return history
 
 
 def extract_site_names(request_body: dict) -> list[str]:
@@ -429,6 +454,26 @@ def get_status():
     status_items = [generate_status_item(name) for name in site_names]
     
     return jsonify({"statusResults": status_items}), 200
+
+
+@app.route('/cover_update', methods=['POST'])
+def get_cover_update():
+    """
+    Cover update endpoint that accepts site geometry and refresh_time.
+    Returns historical cover update statuses from start of month to today.
+    Request format: { "geometry": "POLYGON(...)", "refresh_time": 3600 }
+    Response format: { "randomKey": [{ "date": "...", "status": "..." }, ...] }
+    """
+    request_body = request.get_json() or {}
+    geometry = request_body.get('geometry', '')
+    refresh_time = request_body.get('refresh_time', 86400)  # Default 1 day in seconds
+    
+    # Ensure refresh_time is reasonable (at least 1 hour, at most 1 week)
+    refresh_time = max(3600, min(refresh_time, 604800))
+    
+    history = generate_cover_update_history(refresh_time)
+    
+    return jsonify({"randomKey": history}), 200
 
 
 # ============================================================================

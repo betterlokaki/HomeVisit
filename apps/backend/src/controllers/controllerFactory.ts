@@ -10,6 +10,7 @@ import { GroupController } from "./groupController.ts";
 import { UserController } from "./userController.ts";
 import { SiteHistoryController } from "./siteHistoryController.ts";
 import { AuthController } from "./authController.ts";
+import { CoverUpdateController } from "./coverUpdateController.ts";
 
 // Create shared PostgREST client instance
 const postgrestClient = new PostgRESTClient();
@@ -25,3 +26,4 @@ export const siteHistoryController = new SiteHistoryController(
   siteHistoryService
 );
 export const authController = new AuthController(postgrestClient);
+export const coverUpdateController = new CoverUpdateController(postgrestClient);

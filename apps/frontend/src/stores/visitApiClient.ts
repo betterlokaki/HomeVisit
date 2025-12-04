@@ -3,7 +3,7 @@
  * Single Responsibility: HTTP communication for visit-related data
  */
 
-import type { User } from "@homevisit/common";
+import type { User, MergedHistoryResponse } from "@homevisit/common";
 import type { VisitCard, FilterRequest } from "./visitStore";
 import { API_CONFIG } from "../config/env";
 
@@ -79,4 +79,33 @@ export async function fetchGroupUsers(groupName: string): Promise<User[]> {
   console.log("Response data:", data);
 
   return data.users || [];
+}
+
+/**
+ * Fetch merged cover update and visit history for a site
+ */
+export async function fetchCoverUpdate(
+  siteId: number,
+  groupId: number
+): Promise<MergedHistoryResponse | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cover-update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ siteId, groupId }),
+    });
+
+    if (!response.ok) {
+      console.error(`Cover update HTTP error! status: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch cover update:", error);
+    return null;
+  }
 }

@@ -4,6 +4,7 @@
   import "maplibre-gl/dist/maplibre-gl.css";
   import type { VisitCard } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
+  import { fetchCoverUpdate } from "../stores/visitApiClient";
   import { MAP_CONFIG } from "../config/mapConfig";
   import {
     wktToGeoJSON,
@@ -60,6 +61,26 @@
       map?.remove();
     };
   });
+
+  /**
+   * Fetch cover update history for a site and log to console
+   */
+  async function fetchCoverUpdateHistory(card: VisitCard) {
+    console.log(
+      "Fetching cover update history for site:",
+      card.site_id,
+      card.site_name
+    );
+    const result = await fetchCoverUpdate(card.site_id, card.group_id);
+    if (result) {
+      console.log("Cover update history:", result);
+    } else {
+      console.error(
+        "Failed to fetch cover update history for site:",
+        card.site_id
+      );
+    }
+  }
 
   /**
    * Update map layers with current cards
@@ -144,6 +165,8 @@
           flyToSite(card);
           // Also dispatch event for card selection
           selectedSiteId = card.site_id;
+          // Fetch cover update history and log to console
+          fetchCoverUpdateHistory(card);
         };
 
         map!.on("click", layerId, clickHandler);

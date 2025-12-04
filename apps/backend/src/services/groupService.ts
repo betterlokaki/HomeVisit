@@ -25,7 +25,7 @@ export class GroupService {
   async getById(id: number): Promise<Group | null> {
     try {
       const response = await this.postgrest.get<Group>(
-        `/groups?group_id=eq.${id}&select=group_id,name,data_refreshments&limit=1`
+        `/groups?group_id=eq.${id}&select=group_id,group_name,data_refreshments&limit=1`
       );
       return response.data?.[0] || null;
     } catch (error) {

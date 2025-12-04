@@ -89,6 +89,14 @@ export class SiteService {
     return s ? mapToSite(s) : null;
   }
 
+  async getSiteById(siteId: number): Promise<Site | null> {
+    const resp = await this.postgrest.get<SiteWithUsers>(
+      `/sites?site_id=eq.${siteId}&select=${SITE_SELECT}&limit=1`
+    );
+    const s = resp.data?.[0];
+    return s ? mapToSite(s) : null;
+  }
+
   async updateStatus(siteName: string, status: SeenStatus): Promise<boolean> {
     try {
       const site = await this.getSiteByName(siteName);

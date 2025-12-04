@@ -10,5 +10,12 @@
       "dataKey": "your_data_key",
       "dateKey": "your_date_key"
     }
+  },
+  "coverUpdateService": {
+    "url": "https://your-cover-update-service.com/api/cover_update",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "responseKey": "randomKey"
   }
 }

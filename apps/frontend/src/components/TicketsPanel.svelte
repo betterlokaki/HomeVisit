@@ -5,6 +5,7 @@
   import type { VisitCard as VisitCardType } from "../stores/visitStore";
   import type { SiteFilters } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
+  import { fetchCoverUpdate } from "../stores/visitApiClient";
   import { saveFilters } from "../utils/filterStorage";
   import type { User } from "@homevisit/common";
 
@@ -92,8 +93,31 @@
     selectedCardId = selectedCardId === cardId ? null : cardId;
     if (selectedCardId !== null) {
       dispatch("cardSelect", selectedCardId);
+      // Fetch cover update history for the selected card
+      const selectedCard = cards.find((c) => c.site_id === cardId);
+      if (selectedCard) {
+        fetchCoverUpdateHistory(selectedCard);
+      }
     }
     console.log("Card selected:", cardId);
+  }
+
+  // Fetch cover update history for a card and log to console
+  async function fetchCoverUpdateHistory(card: VisitCardType) {
+    console.log(
+      "Fetching cover update history for site:",
+      card.site_id,
+      card.site_name
+    );
+    const result = await fetchCoverUpdate(card.site_id, card.group_id);
+    if (result) {
+      console.log("Cover update history:", result);
+    } else {
+      console.error(
+        "Failed to fetch cover update history for site:",
+        card.site_id
+      );
+    }
   }
 
   // Handlers for visit card actions

@@ -28,6 +28,8 @@ try {
 // Import routes AFTER config is loaded
 const sitesRoutes = (await import("./routes/sitesRoutes.ts")).default;
 const authRoutes = (await import("./routes/authRoutes.ts")).default;
+const coverUpdateRoutes = (await import("./routes/coverUpdateRoutes.ts"))
+  .default;
 
 const app = express();
 
@@ -47,6 +49,7 @@ app.get("/api-docs", swaggerUi.setup(swaggerSpec) as any);
 setupHealthCheck(app);
 app.use("/auth", authRoutes);
 app.use("/sites", sitesRoutes);
+app.use("/cover-update", coverUpdateRoutes);
 
 // Error handlers
 setupErrorHandlers(app);
