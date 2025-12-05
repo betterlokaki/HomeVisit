@@ -164,107 +164,106 @@
   style="min-height: 600px; background-color: #1A1A1A;"
   dir="rtl"
 >
-  <!-- Scrollable Content Area -->
-  <div class="scrollable-content flex-1 overflow-y-auto p-1 pt-2">
-    <!-- Title Section -->
-    <div
-      class="flex flex-col gap-0.75 items-end justify-center shrink-0 w-full sticky top-0 z-10 pb-0.75"
-      style="background-color: #1A1A1A;"
-    >
-      <div class="flex gap-1.5 items-center relative shrink-0 w-full">
-        <h2 class="text-xl font-bold text-white">ביקורים</h2>
-        <span class="text-sm text-gray-400">
-          {cards.length} בתים
-        </span>
-      </div>
-
-      <!-- Filter Section -->
-      <div class="flex gap-1 items-center w-full flex-wrap">
-        <!-- User Dropdown Filter -->
-        <UserDropdown
-          users={groupUsers}
-          selectedUsernames={filters.selectedUsers}
-          isOpen={userDropdownOpen}
-          on:change={handleUsersChange}
-        />
-
-        <!-- Button 2: Awaiting Filter (updatedStatus Full|Partial AND seen_status Not Seen|Partial) -->
-        <button
-          on:click={() => toggleFilter("awaiting")}
-          class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-            filters.awaiting
-              ? "bg-blue-600 hover:bg-blue-500 text-white"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-100"
-          }`}
-        >
-          מחכה לביקור
-        </button>
-
-        <!-- Button 3: Collection Filter (updatedStatus = "No") -->
-        <button
-          on:click={() => toggleFilter("collection")}
-          class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-            filters.collection
-              ? "bg-blue-600 hover:bg-blue-500 text-white"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-100"
-          }`}
-        >
-          דרוש לאיסוף
-        </button>
-
-        <!-- Button 4: Completed Full Filter (seen_status = "Seen") -->
-        <button
-          on:click={() => toggleFilter("completedFull")}
-          class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-            filters.completedFull
-              ? "bg-blue-600 hover:bg-blue-500 text-white"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-100"
-          }`}
-        >
-          בוצע
-        </button>
-
-        <!-- Button 5: Completed Partial Filter (seen_status = "Partial") -->
-        <button
-          on:click={() => toggleFilter("completedPartial")}
-          class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
-            filters.completedPartial
-              ? "bg-blue-600 hover:bg-blue-500 text-white"
-              : "bg-gray-700 hover:bg-gray-600 text-gray-100"
-          }`}
-        >
-          בוצע חלקית
-        </button>
-      </div>
-
-      <!-- Progress Bar -->
-      <div class="w-full mt-2">
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-xs text-gray-400">התקדמות ביקורים</span>
-          <span class="text-xs font-bold text-blue-400">{progressPercent}%</span
-          >
-        </div>
-        <div
-          class="w-full h-2 rounded-full overflow-hidden"
-          style="background-color: #434343;"
-        >
-          <div
-            class="h-full rounded-full transition-all duration-500 ease-out"
-            style="width: {progressPercent}%; background-color: #3B82F6;"
-          ></div>
-        </div>
-        <div class="flex items-center justify-between mt-1">
-          <span class="text-xs text-gray-500"
-            >{completedCount} מתוך {totalCount} הושלמו</span
-          >
-        </div>
-      </div>
+  <!-- Fixed Header Section (not scrollable) -->
+  <div
+    class="flex flex-col gap-0.75 items-end justify-center shrink-0 w-full p-2 pb-3"
+    style="background-color: #1A1A1A; border-bottom: 1px solid #333;"
+  >
+    <div class="flex gap-1.5 items-center relative shrink-0 w-full">
+      <h2 class="text-xl font-bold text-white">ביקורים</h2>
+      <span class="text-sm text-gray-400">
+        {cards.length} בתים
+      </span>
     </div>
 
+    <!-- Filter Section -->
+    <div class="flex gap-1 items-center w-full flex-wrap">
+      <!-- User Dropdown Filter -->
+      <UserDropdown
+        users={groupUsers}
+        selectedUsernames={filters.selectedUsers}
+        isOpen={userDropdownOpen}
+        on:change={handleUsersChange}
+      />
+
+      <!-- Button 2: Awaiting Filter (updatedStatus Full|Partial AND seen_status Not Seen|Partial) -->
+      <button
+        on:click={() => toggleFilter("awaiting")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.awaiting
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
+      >
+        מחכה לביקור
+      </button>
+
+      <!-- Button 3: Collection Filter (updatedStatus = "No") -->
+      <button
+        on:click={() => toggleFilter("collection")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.collection
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
+      >
+        דרוש לאיסוף
+      </button>
+
+      <!-- Button 4: Completed Full Filter (seen_status = "Seen") -->
+      <button
+        on:click={() => toggleFilter("completedFull")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.completedFull
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
+      >
+        בוצע
+      </button>
+
+      <!-- Button 5: Completed Partial Filter (seen_status = "Partial") -->
+      <button
+        on:click={() => toggleFilter("completedPartial")}
+        class={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
+          filters.completedPartial
+            ? "bg-blue-600 hover:bg-blue-500 text-white"
+            : "bg-gray-700 hover:bg-gray-600 text-gray-100"
+        }`}
+      >
+        בוצע חלקית
+      </button>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="w-full mt-2">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs text-gray-400">התקדמות ביקורים</span>
+        <span class="text-xs font-bold text-blue-400">{progressPercent}%</span>
+      </div>
+      <div
+        class="w-full h-2 rounded-full overflow-hidden"
+        style="background-color: #434343;"
+      >
+        <div
+          class="h-full rounded-full transition-all duration-500 ease-out"
+          style="width: {progressPercent}%; background-color: #3B82F6;"
+        ></div>
+      </div>
+      <div class="flex items-center justify-between mt-1">
+        <span class="text-xs text-gray-500"
+          >{completedCount} מתוך {totalCount} הושלמו</span
+        >
+      </div>
+    </div>
+  </div>
+
+  <!-- Scrollable Content Area -->
+  <div class="scrollable-content flex-1 overflow-y-auto p-2 pt-0">
     <!-- Loading State -->
     {#if loading}
       <div
-        class="flex flex-col gap-1 items-center justify-center w-full px-2 py-2.5"
+        class="flex flex-col gap-1 items-center justify-center w-full px-2 py-2.5 mt-2"
       >
         <div class="animate-spin">
           <div
@@ -277,7 +276,7 @@
 
     <!-- Visit Cards List -->
     {#if !loading && cards.length > 0}
-      <div class="flex flex-col gap-1 w-full py-5">
+      <div class="flex flex-col gap-2 w-full pt-2 pb-5 px-3">
         {#each cards as card (card.site_id)}
           <VisitCard
             {card}

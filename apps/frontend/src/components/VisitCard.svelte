@@ -65,7 +65,7 @@
     on:keydown={(e) => handleKeyDown(e, () => {})}
     class="absolute top-2 left-2 border {card.updatedStatus === 'No'
       ? 'border-gray-500 bg-gray-800 cursor-not-allowed opacity-50'
-      : 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer'} flex items-center justify-center h-5 w-5 rounded transition-colors group"
+      : 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer'} flex items-center justify-center gap-1 h-5 px-1.5 rounded transition-colors group"
     title={card.updatedStatus === "No" ? "אין איסוף" : "פתח בברק"}
     style={card.updatedStatus === "No" ? "pointer-events: none;" : ""}
   >
@@ -90,6 +90,9 @@
         />
       </svg>
     </div>
+    {#if card.updatedStatus !== "No"}
+      <span class="text-xs text-gray-100 group-hover:text-white">פתח</span>
+    {/if}
   </a>
 
   <!-- Action Buttons - Show when selected and updatedStatus is not 'No' -->
@@ -97,7 +100,7 @@
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div
-      class="absolute top-2 left-9 flex items-center"
+      class="absolute top-2 left-16 flex items-center"
       on:click|stopPropagation
     >
       <ActionButtons
