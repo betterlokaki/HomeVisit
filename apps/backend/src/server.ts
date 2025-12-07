@@ -31,6 +31,11 @@ const authRoutes = (await import("./routes/authRoutes.ts")).default;
 const coverUpdateRoutes = (await import("./routes/coverUpdateRoutes.ts"))
   .default;
 
+// Import enrichment cache scheduler AFTER config is loaded
+const { enrichmentCacheScheduler } = await import(
+  "./controllers/controllerFactory.ts"
+);
+
 const app = express();
 
 // Middleware
@@ -70,6 +75,15 @@ app.listen(PORT, "0.0.0.0", async () => {
   } catch (error) {
     logger.error("⚠️ Failed to start status refresh scheduler", error);
     // Don't exit the process, the scheduler is not critical
+  }
+
+  // Initialize enrichment cache scheduler
+  try {
+    await enrichmentCacheScheduler.start();
+    logger.info("✅ Enrichment cache scheduler started successfully");
+  } catch (error) {
+    logger.error("⚠️ Failed to start enrichment cache scheduler", error);
+    // Don't exit the process, requests will fall back to slow API
   }
 });
 

@@ -13,6 +13,8 @@ import {
   CoverUpdateService,
   HistoryMergeService,
   UserService,
+  EnrichmentCacheService,
+  EnrichmentCacheScheduler,
 } from "../services/index.ts";
 import { SitesController } from "./sitesController.ts";
 import { GroupController } from "./groupController.ts";
@@ -33,13 +35,23 @@ const filterService = new FilterService();
 const siteHistoryService = new SiteHistoryService(postgrestClient);
 const coverUpdateService = new CoverUpdateService();
 const historyMergeService = new HistoryMergeService();
+const enrichmentCacheService = new EnrichmentCacheService();
+
+// Create cache scheduler with dependencies
+export const enrichmentCacheScheduler = new EnrichmentCacheScheduler(
+  groupService,
+  siteService,
+  enrichmentService,
+  enrichmentCacheService
+);
 
 // Export controller instances with injected dependencies
 export const sitesController = new SitesController(
   siteService,
   groupService,
   enrichmentService,
-  filterService
+  filterService,
+  enrichmentCacheService
 );
 export const groupController = new GroupController(groupService);
 export const userController = new UserController(userService);

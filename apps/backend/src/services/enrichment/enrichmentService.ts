@@ -6,7 +6,6 @@ import type {
   Group,
 } from "@homevisit/common";
 import type { IEnrichmentService } from "./interfaces/IEnrichmentService.ts";
-import { logger } from "../../middleware/logger.ts";
 import {
   buildEnrichmentRequest,
   createStatusMap,
@@ -54,27 +53,22 @@ export class EnrichmentService implements IEnrichmentService {
       Date.now() - group.data_refreshments
     ).toISOString();
 
-    try {
-      const requestBody = buildEnrichmentRequest(
-        siteNames,
-        geometries,
-        dateFrom,
-        dateTo,
-        this.requestKeys
-      );
-      const response = await axios.post<EnrichmentResponseBody>(
-        this.url,
-        requestBody,
-        { headers: this.headers, proxy: false }
-      );
-      const statusItems = this.extractResponseData(response.data);
-      const statusMap = createStatusMap(statusItems);
-      return sites.map((site) =>
-        this.mapToEnrichedSite(site, statusMap.get(site.site_name))
-      );
-    } catch (error) {
-      logger.error("Failed to enrich sites from external service", error);
-      return sites.map((site) => this.mapToEnrichedSite(site, undefined));
-    }
+    const requestBody = buildEnrichmentRequest(
+      siteNames,
+      geometries,
+      dateFrom,
+      dateTo,
+      this.requestKeys
+    );
+    const response = await axios.post<EnrichmentResponseBody>(
+      this.url,
+      requestBody,
+      { headers: this.headers, proxy: false }
+    );
+    const statusItems = this.extractResponseData(response.data);
+    const statusMap = createStatusMap(statusItems);
+    return sites.map((site) =>
+      this.mapToEnrichedSite(site, statusMap.get(site.site_name))
+    );
   }
 }

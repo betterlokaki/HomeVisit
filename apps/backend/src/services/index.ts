@@ -50,3 +50,8 @@ export { GeometryService } from "./geometry/geometryService.ts";
 // User service
 export type { IUserService } from "./user/interfaces/IUserService.ts";
 export { UserService } from "./user/userService.ts";
+
+// Enrichment cache service
+export type { IEnrichmentCacheService } from "./enrichmentCache/interfaces/IEnrichmentCacheService.ts";
+export { EnrichmentCacheService } from "./enrichmentCache/enrichmentCacheService.ts";
+export { EnrichmentCacheScheduler } from "./enrichmentCache/enrichmentCacheScheduler.ts";

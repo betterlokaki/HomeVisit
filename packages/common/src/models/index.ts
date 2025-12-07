@@ -26,3 +26,6 @@ export * from "./overlay/index.js";
 
 // API types
 export * from "./api/index.js";
+
+// Cache types
+export * from "./cache/index.js";

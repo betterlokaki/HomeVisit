@@ -21,6 +21,58 @@ HomeVisit is a monorepo (pnpm workspaces) for aerial photography site visit mana
 - **Helper functions** - When a function needs multiple operations, split into helpers and orchestrate
 - **Dependency injection** - Never instantiate dependencies inside classes, inject from outside
 - **Interface contracts** - Use interfaces between classes/services, never couple directly
+- **Throw first, catch later** - Services throw errors, only catch at the highest layer (controllers/schedulers)
+
+### Error Handling: Throw First, Catch Later
+
+**Services and low-level modules must throw errors, never catch them:**
+
+```typescript
+// ❌ WRONG - Service catches its own errors
+async fetchData(): Promise<Data[]> {
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    logger.error("Failed", error);
+    return []; // Swallowing the error
+  }
+}
+
+// ✅ CORRECT - Service throws, let caller decide
+async fetchData(): Promise<Data[]> {
+  const response = await axios.get(url);
+  return response.data;
+}
+```
+
+**Only catch at the highest layer:**
+
+- **Controllers** - Catch and send HTTP error response
+- **Schedulers/Orchestrators** - Catch to allow other operations to continue
+- **Server startup** - Catch for graceful degradation or exit
+
+```typescript
+// Controller (highest layer) - catches and responds
+async getSites(req: Request, res: Response): Promise<void> {
+  try {
+    const sites = await this.siteService.getAll();
+    sendSuccess(res, sites);
+  } catch (error) {
+    sendError(res, "Failed to fetch sites", 500, error);
+  }
+}
+
+// Scheduler orchestration - catches per-item for resilience
+for (const group of groups) {
+  try {
+    await this.refreshGroup(group.name);
+  } catch (error) {
+    logger.error(`Failed for group: ${group.name}`, error);
+    // Continue with next group
+  }
+}
+```
 
 ### Backend Service Directory Structure
 

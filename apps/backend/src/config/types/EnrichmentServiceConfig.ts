@@ -8,4 +8,5 @@ export interface EnrichmentServiceConfig {
   url: string;
   headers: Record<string, string>;
   requestKeys: RequestKeys;
+  cacheRefreshIntervalMinutes: number;
 }
