@@ -3,8 +3,7 @@
  * Single Responsibility: Fetch overlays from external elastic provider
  */
 
-import type { FilterSchema } from "@homevisit/common/src/models/OverlaySearch.ts";
-import type { ElasticProviderOverlay } from "@homevisit/common/src/models/Overlay.ts";
+import type { FilterSchema, ElasticProviderOverlay } from "@homevisit/common";
 import axios from "axios";
 import {
   ELASTIC_PROVIDER_BASE_URL,

@@ -2,7 +2,7 @@
  * Site History Controller - Site history operations
  */
 import { Request, Response } from "express";
-import type { ISiteHistoryService } from "../interfaces/ISiteHistoryService.ts";
+import type { ISiteHistoryService } from "../services/siteHistory/interfaces/ISiteHistoryService.ts";
 import type { SeenStatus } from "@homevisit/common";
 import {
   sendSuccess,

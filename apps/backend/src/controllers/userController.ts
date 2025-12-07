@@ -3,8 +3,7 @@
  */
 
 import { Request, Response } from "express";
-import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
-import { UserService } from "../services/userService.ts";
+import type { IUserService } from "../services/user/interfaces/IUserService.ts";
 import {
   sendSuccess,
   sendError,
@@ -13,11 +12,7 @@ import {
 import { logger } from "../middleware/logger.ts";
 
 export class UserController {
-  private userService: UserService;
-
-  constructor(postgrest: IPostgRESTClient) {
-    this.userService = new UserService(postgrest);
-  }
+  constructor(private userService: IUserService) {}
 
   async getGroupUsers(req: Request, res: Response): Promise<void> {
     try {

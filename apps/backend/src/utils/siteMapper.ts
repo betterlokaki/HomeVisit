@@ -4,7 +4,7 @@
  */
 
 import type { Site } from "@homevisit/common";
-import type { SiteWithUsers } from "../interfaces/SiteDTO.ts";
+import type { SiteWithUsers } from "../services/site/SiteWithUsers.ts";
 import { normalizeGeometryToWkt } from "./geojsonToWkt.ts";
 import { logger } from "../middleware/logger.ts";
 

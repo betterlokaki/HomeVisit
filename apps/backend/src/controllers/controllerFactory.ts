@@ -3,8 +3,17 @@
  * Single Responsibility: Instantiate controllers with their dependencies
  */
 
-import { PostgRESTClient } from "../services/postgrestClient.ts";
-import { SiteHistoryService } from "../services/siteHistoryService.ts";
+import {
+  PostgRESTClient,
+  SiteService,
+  GroupService,
+  EnrichmentService,
+  FilterService,
+  SiteHistoryService,
+  CoverUpdateService,
+  HistoryMergeService,
+  UserService,
+} from "../services/index.ts";
 import { SitesController } from "./sitesController.ts";
 import { GroupController } from "./groupController.ts";
 import { UserController } from "./userController.ts";
@@ -16,14 +25,32 @@ import { CoverUpdateController } from "./coverUpdateController.ts";
 const postgrestClient = new PostgRESTClient();
 
 // Create service instances with dependencies
+const siteService = new SiteService(postgrestClient);
+const groupService = new GroupService(postgrestClient);
+const userService = new UserService(postgrestClient);
+const enrichmentService = new EnrichmentService();
+const filterService = new FilterService();
 const siteHistoryService = new SiteHistoryService(postgrestClient);
+const coverUpdateService = new CoverUpdateService();
+const historyMergeService = new HistoryMergeService();
 
 // Export controller instances with injected dependencies
-export const sitesController = new SitesController(postgrestClient);
-export const groupController = new GroupController(postgrestClient);
-export const userController = new UserController(postgrestClient);
+export const sitesController = new SitesController(
+  siteService,
+  groupService,
+  enrichmentService,
+  filterService
+);
+export const groupController = new GroupController(groupService);
+export const userController = new UserController(userService);
 export const siteHistoryController = new SiteHistoryController(
   siteHistoryService
 );
-export const authController = new AuthController(postgrestClient);
-export const coverUpdateController = new CoverUpdateController(postgrestClient);
+export const authController = new AuthController(userService);
+export const coverUpdateController = new CoverUpdateController(
+  coverUpdateService,
+  historyMergeService,
+  siteHistoryService,
+  groupService,
+  siteService
+);

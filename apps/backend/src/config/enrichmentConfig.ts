@@ -1,29 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import { logger } from "../middleware/logger.ts";
+import type { RequestKeys, EnrichmentConfig } from "./types/index.ts";
 
-export interface RequestKeys {
-  outerKey: string;
-  dataKey: string;
-  dateKey: string;
-}
-
-export interface EnrichmentServiceConfig {
-  url: string;
-  headers: Record<string, string>;
-  requestKeys: RequestKeys;
-}
-
-export interface CoverUpdateServiceConfig {
-  url: string;
-  headers: Record<string, string>;
-  responseKey: string;
-}
-
-export interface EnrichmentConfig {
-  enrichmentService: EnrichmentServiceConfig;
-  coverUpdateService: CoverUpdateServiceConfig;
-}
+export type { RequestKeys };
 
 let enrichmentConfig: EnrichmentConfig | null = null;
 

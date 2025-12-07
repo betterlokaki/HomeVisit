@@ -3,17 +3,12 @@
  */
 
 import { Request, Response } from "express";
-import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
-import { GroupService } from "../services/groupService.ts";
+import type { IGroupService } from "../services/group/interfaces/IGroupService.ts";
 import { sendSuccess, sendError } from "../utils/responseHelper.ts";
 import { logger } from "../middleware/logger.ts";
 
 export class GroupController {
-  private groupService: GroupService;
-
-  constructor(postgrest: IPostgRESTClient) {
-    this.groupService = new GroupService(postgrest);
-  }
+  constructor(private groupService: IGroupService) {}
 
   async getAllGroups(req: Request, res: Response): Promise<void> {
     try {

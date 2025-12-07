@@ -4,11 +4,12 @@
  */
 
 import { logger } from "../middleware/logger.ts";
-import { GroupService } from "./groupService.ts";
-import { PostgRESTClient } from "./postgrestClient.ts";
-import { SiteHistoryService } from "./siteHistoryService.ts";
-import type { ISiteHistoryService } from "../interfaces/ISiteHistoryService.ts";
-import type { IPostgRESTClient } from "../interfaces/IPostgRESTClient.ts";
+import { GroupService } from "./group/groupService.ts";
+import { PostgRESTClient } from "./postgrest/postgrestClient.ts";
+import { SiteHistoryService } from "./siteHistory/siteHistoryService.ts";
+import type { ISiteHistoryService } from "./siteHistory/interfaces/ISiteHistoryService.ts";
+import type { IPostgRESTClient } from "./postgrest/interfaces/IPostgRESTClient.ts";
+import type { IGroupService } from "./group/interfaces/IGroupService.ts";
 
 interface ScheduledGroup {
   groupId: number;
@@ -19,16 +20,11 @@ interface ScheduledGroup {
 export class StatusRefreshScheduler {
   private scheduledGroups: Map<number, ScheduledGroup> = new Map();
   private isRunning = false;
-  private groupService: GroupService;
-  private siteHistoryService: ISiteHistoryService;
 
   constructor(
-    postgrest: IPostgRESTClient,
-    siteHistoryService: ISiteHistoryService
-  ) {
-    this.groupService = new GroupService(postgrest);
-    this.siteHistoryService = siteHistoryService;
-  }
+    private groupService: IGroupService,
+    private siteHistoryService: ISiteHistoryService
+  ) {}
 
   async start(): Promise<void> {
     if (this.isRunning) {
@@ -113,10 +109,9 @@ export class StatusRefreshScheduler {
 
 function createStatusRefreshScheduler(): StatusRefreshScheduler {
   const postgrest = new PostgRESTClient();
-  return new StatusRefreshScheduler(
-    postgrest,
-    new SiteHistoryService(postgrest)
-  );
+  const groupService = new GroupService(postgrest);
+  const siteHistoryService = new SiteHistoryService(postgrest);
+  return new StatusRefreshScheduler(groupService, siteHistoryService);
 }
 
 export const statusRefreshScheduler = createStatusRefreshScheduler();

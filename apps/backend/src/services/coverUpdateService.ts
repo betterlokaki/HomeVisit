@@ -5,10 +5,8 @@
 import type { CoverUpdateEntry, CoverUpdateResponse } from "@homevisit/common";
 import type { ICoverUpdateService } from "../interfaces/ICoverUpdateService.ts";
 import { logger } from "../middleware/logger.ts";
-import {
-  getEnrichmentConfig,
-  type CoverUpdateServiceConfig,
-} from "../config/enrichmentConfig.ts";
+import { getEnrichmentConfig } from "../config/enrichmentConfig.ts";
+import type { CoverUpdateServiceConfig } from "../config/types/index.ts";
 import axios from "axios";
 
 export class CoverUpdateService implements ICoverUpdateService {

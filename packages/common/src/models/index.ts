@@ -1,21 +1,28 @@
 /**
  * Central export point for all shared models
+ * Re-exports from organized subdirectories
  */
 
-export * from "./User.js";
-export * from "./Site.js";
-export * from "./SiteHistory.js";
-export * from "./Group.js";
-export * from "./Overlay.js";
-export * from "./OverlaySearch.js";
-export * from "./FilterConfig.js";
-export * from "./ApiResponse.js";
-export * from "./EnrichmentRequest.js";
-export * from "./EnrichmentResponse.js";
-export * from "./MergedStatus.js";
-export * from "./CoverUpdateEntry.js";
-export * from "./CoverUpdateResponse.js";
-export * from "./MergedHistoryEntry.js";
-export * from "./CoverUpdateRequest.js";
-export * from "./MergedHistoryResponse.js";
-export type { FilterRequest, SiteFilters } from "./FilterConfig.js";
+// Site types
+export * from "./site/index.js";
+
+// User types
+export * from "./user/index.js";
+
+// Group types
+export * from "./group/index.js";
+
+// Filter types
+export * from "./filter/index.js";
+
+// History types
+export * from "./history/index.js";
+
+// Enrichment types
+export * from "./enrichment/index.js";
+
+// Overlay types
+export * from "./overlay/index.js";
+
+// API types
+export * from "./api/index.js";
