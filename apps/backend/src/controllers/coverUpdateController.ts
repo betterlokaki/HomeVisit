@@ -10,6 +10,7 @@ import type { IHistoryMergeService } from "../services/historyMerge/interfaces/I
 import type { ISiteHistoryService } from "../services/siteHistory/interfaces/ISiteHistoryService.ts";
 import type { IGroupService } from "../services/group/interfaces/IGroupService.ts";
 import type { ISiteService } from "../services/site/interfaces/ISiteService.ts";
+import type { ICacheService } from "../services/cache/interfaces/ICacheService.ts";
 import { sendSuccess, sendError } from "../utils/responseHelper.ts";
 import { logger } from "../middleware/logger.ts";
 
@@ -19,8 +20,16 @@ export class CoverUpdateController {
     private historyMergeService: IHistoryMergeService,
     private siteHistoryService: ISiteHistoryService,
     private groupService: IGroupService,
-    private siteService: ISiteService
+    private siteService: ISiteService,
+    private cacheService: ICacheService<MergedHistoryResponse>
   ) {}
+
+  /**
+   * Build cache key from site name and group name
+   */
+  private buildCacheKey(siteName: string, groupName: string): string {
+    return `${siteName}_${groupName}`;
+  }
 
   /**
    * Get merged cover update and visit history for a site
@@ -44,6 +53,19 @@ export class CoverUpdateController {
       const group = await this.groupService.getById(groupId);
       if (!group) {
         sendError(res, "Group not found", 404);
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = this.buildCacheKey(site.site_name, group.group_name);
+      const cachedResponse = this.cacheService.get(cacheKey);
+      if (cachedResponse) {
+        logger.info("Returning cached merged history", {
+          siteId,
+          groupId,
+          cacheKey,
+        });
+        sendSuccess(res, cachedResponse);
         return;
       }
 
@@ -75,6 +97,9 @@ export class CoverUpdateController {
         siteName: site.site_name,
         history: mergedHistory,
       };
+
+      // Store in cache
+      this.cacheService.set(cacheKey, response);
 
       logger.info("Successfully fetched merged history", {
         siteId,

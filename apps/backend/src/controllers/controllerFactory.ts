@@ -15,7 +15,9 @@ import {
   UserService,
   EnrichmentCacheService,
   EnrichmentCacheScheduler,
+  GenericCacheService,
 } from "../services/index.ts";
+import type { MergedHistoryResponse } from "@homevisit/common";
 import { SitesController } from "./sitesController.ts";
 import { GroupController } from "./groupController.ts";
 import { UserController } from "./userController.ts";
@@ -36,6 +38,7 @@ const siteHistoryService = new SiteHistoryService(postgrestClient);
 const coverUpdateService = new CoverUpdateService();
 const historyMergeService = new HistoryMergeService();
 const enrichmentCacheService = new EnrichmentCacheService();
+const coverUpdateCacheService = new GenericCacheService<MergedHistoryResponse>("coverUpdate");
 
 // Create cache scheduler with dependencies
 export const enrichmentCacheScheduler = new EnrichmentCacheScheduler(
@@ -64,5 +67,6 @@ export const coverUpdateController = new CoverUpdateController(
   historyMergeService,
   siteHistoryService,
   groupService,
-  siteService
+  siteService,
+  coverUpdateCacheService
 );

@@ -55,3 +55,7 @@ export { UserService } from "./user/userService.ts";
 export type { IEnrichmentCacheService } from "./enrichmentCache/interfaces/IEnrichmentCacheService.ts";
 export { EnrichmentCacheService } from "./enrichmentCache/enrichmentCacheService.ts";
 export { EnrichmentCacheScheduler } from "./enrichmentCache/enrichmentCacheScheduler.ts";
+
+// Generic cache service
+export type { ICacheService } from "./cache/interfaces/ICacheService.ts";
+export { GenericCacheService } from "./cache/GenericCacheService.ts";
