@@ -38,7 +38,9 @@ const siteHistoryService = new SiteHistoryService(postgrestClient);
 const coverUpdateService = new CoverUpdateService();
 const historyMergeService = new HistoryMergeService();
 const enrichmentCacheService = new EnrichmentCacheService();
-const coverUpdateCacheService = new GenericCacheService<MergedHistoryResponse>("coverUpdate");
+const coverUpdateCacheService = new GenericCacheService<MergedHistoryResponse>(
+  "coverUpdate"
+);
 
 // Create cache scheduler with dependencies
 export const enrichmentCacheScheduler = new EnrichmentCacheScheduler(
