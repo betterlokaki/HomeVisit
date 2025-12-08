@@ -17,6 +17,12 @@
     "headers": {
       "Content-Type": "application/json"
     },
-    "responseKey": "randomKey"
+    "responseKey": "randomKey",
+    "requestKeys": {
+      "geometryOuterKey": "your_geometry_outer_key",
+      "geometryInnerKey": "your_geometry_inner_key",
+      "secondsOuterKey": "your_seconds_outer_key",
+      "secondsInnerKey": "your_seconds_inner_key"
+    }
   }
 }

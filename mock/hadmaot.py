@@ -459,14 +459,31 @@ def get_status():
 @app.route('/cover_update', methods=['POST'])
 def get_cover_update():
     """
-    Cover update endpoint that accepts site geometry and refresh_time.
+    Cover update endpoint that accepts site geometry and refresh_time in nested format.
     Returns historical cover update statuses from start of month to today.
-    Request format: { "geometry": "POLYGON(...)", "refresh_time": 3600 }
+    Request format: 
+    { 
+        "geometryOuterKey": { "geometryInnerKey": ["WKT_STRING"] },
+        "secondsOuterKey": { "secondsInnerKey": [refresh_time_int] }
+    }
     Response format: { "randomKey": [{ "date": "...", "status": "..." }, ...] }
     """
     request_body = request.get_json() or {}
-    geometry = request_body.get('geometry', '')
-    refresh_time = request_body.get('refresh_time', 86400)  # Default 1 day in seconds
+    
+    # Extract geometry and refresh_time from nested dynamic keys
+    # Keys are dynamic, so we parse by structure: first key with string array = geometry, first key with int array = seconds
+    geometry = ''
+    refresh_time = 86400  # Default 1 day in seconds
+    
+    for outer_key, inner_obj in request_body.items():
+        if isinstance(inner_obj, dict):
+            for inner_key, values in inner_obj.items():
+                if isinstance(values, list) and len(values) > 0:
+                    first_value = values[0]
+                    if isinstance(first_value, str):
+                        geometry = first_value
+                    elif isinstance(first_value, (int, float)):
+                        refresh_time = int(first_value)
     
     # Ensure refresh_time is reasonable (at least 1 hour, at most 1 week)
     refresh_time = max(3600, min(refresh_time, 604800))

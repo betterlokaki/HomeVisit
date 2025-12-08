@@ -7,6 +7,7 @@ import type { ICoverUpdateService } from "./interfaces/ICoverUpdateService.ts";
 import { logger } from "../../middleware/logger.ts";
 import { getEnrichmentConfig } from "../../config/enrichmentConfig.ts";
 import type { CoverUpdateServiceConfig } from "../../config/types/index.ts";
+import { buildCoverUpdateRequest } from "./coverUpdateRequestBuilder.ts";
 import axios from "axios";
 
 export class CoverUpdateService implements ICoverUpdateService {
@@ -23,9 +24,15 @@ export class CoverUpdateService implements ICoverUpdateService {
     try {
       const refreshTimeSeconds = Math.floor(refreshTimeMs / 1000);
 
+      const requestBody = buildCoverUpdateRequest(
+        geometry,
+        refreshTimeSeconds,
+        this.config.requestKeys
+      );
+
       const response = await axios.post<CoverUpdateResponse>(
         this.config.url,
-        { geometry, refresh_time: refreshTimeSeconds },
+        requestBody,
         { headers: this.config.headers, proxy: false }
       );
 
