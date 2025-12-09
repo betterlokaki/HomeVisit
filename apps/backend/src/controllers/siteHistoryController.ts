@@ -3,6 +3,7 @@
  */
 import { Request, Response } from "express";
 import type { ISiteHistoryService } from "../services/siteHistory/interfaces/ISiteHistoryService.ts";
+import type { ISiteService } from "../services/site/interfaces/ISiteService.ts";
 import type { SeenStatus } from "@homevisit/common";
 import {
   sendSuccess,
@@ -15,7 +16,10 @@ import { logger } from "../middleware/logger.ts";
 const VALID_STATUSES = ["Seen", "Partial", "Not Seen"];
 
 export class SiteHistoryController {
-  constructor(private siteHistoryService: ISiteHistoryService) {}
+  constructor(
+    private siteHistoryService: ISiteHistoryService,
+    private siteService: ISiteService
+  ) {}
 
   async getSiteHistory(req: Request, res: Response): Promise<void> {
     try {
@@ -80,6 +84,7 @@ export class SiteHistoryController {
       if (isNaN(parsedDate.getTime()))
         return sendValidationError(res, "Invalid date format. Use YYYY-MM-DD");
 
+      // Update history in database
       const updated = await this.siteHistoryService.updateSiteHistory(
         siteName,
         groupName,
@@ -91,6 +96,31 @@ export class SiteHistoryController {
           res,
           `History record for site ${siteName} on ${date}`
         );
+
+      // If updating history for today, also update the site's current status
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const historyDate = new Date(parsedDate);
+      historyDate.setHours(0, 0, 0, 0);
+
+      if (historyDate.getTime() === today.getTime()) {
+        try {
+          await this.siteService.updateStatus(siteName, status as SeenStatus);
+          logger.info("Site status also updated (today's history)", {
+            siteName,
+            status,
+          });
+        } catch (error) {
+          logger.warn(
+            "Failed to update site status when updating today's history",
+            {
+              siteName,
+              error,
+            }
+          );
+          // Don't fail the request if site update fails, history was already updated
+        }
+      }
 
       logger.info("Site history updated", {
         siteName,

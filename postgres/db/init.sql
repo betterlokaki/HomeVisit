@@ -573,11 +573,14 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_site_history_by_name_and_group(VARCHAR, VARCHAR) TO anon;
 
 /**
- * update_site_history - Update a specific history record by site name, group name, and date
+ * update_site_history - Update or insert a specific history record by site name, group name, and date
+ * 
+ * This function performs an UPSERT operation - it will INSERT a new record if it doesn't exist,
+ * or UPDATE the existing record if it does. This ensures the database is always updated.
  * 
  * @param p_site_name - Name of the site
  * @param p_group_name - Name of the group
- * @param p_date - Date of the history record to update
+ * @param p_date - Date of the history record to update/insert
  * @param p_new_status - New status to set
  * 
  * @returns Boolean indicating success
@@ -591,7 +594,6 @@ CREATE OR REPLACE FUNCTION public.update_site_history(
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_site_id BIGINT;
-  v_updated INTEGER;
 BEGIN
   -- Get site_id matching both site_name and group_name
   SELECT s.site_id INTO v_site_id
@@ -605,13 +607,13 @@ BEGIN
     RETURN FALSE;
   END IF;
   
-  UPDATE sites_history
-  SET status = p_new_status
-  WHERE site_id = v_site_id
-    AND recorded_date = p_date;
+  -- UPSERT: Insert if doesn't exist, update if it does
+  INSERT INTO sites_history (site_id, status, recorded_date)
+  VALUES (v_site_id, p_new_status, p_date)
+  ON CONFLICT (site_id, recorded_date)
+  DO UPDATE SET status = EXCLUDED.status;
   
-  GET DIAGNOSTICS v_updated = ROW_COUNT;
-  RETURN v_updated > 0;
+  RETURN TRUE;
 END $$;
 
 GRANT EXECUTE ON FUNCTION public.update_site_history(VARCHAR, VARCHAR, DATE, seen_status) TO anon;

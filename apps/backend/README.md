@@ -90,7 +90,7 @@ GET /sites/userSites?user_id=1
         "last_data": "2025-11-16T...",
         "created_at": "2025-11-16T...",
         "updated_at": "2025-11-16T...",
-        "updatedStatus": "Full",
+        "coverStatus": "Full",
         "siteLink": "https://site-abc123-def456.homevisit.local"
       }
     ]
@@ -102,11 +102,12 @@ GET /sites/userSites?user_id=1
 
 Each site is enriched with two additional fields:
 
-### `updatedStatus`
+### `coverStatus` (Coverage Status)
 
 - Calculated asynchronously with a 1-second delay (simulating real-world calculation)
 - Returns one of: `Full`, `Partial`, `No`
-- Randomly selected from closed list
+- Indicates whether new coverage data came in today
+- **Note**: Previously called `updatedStatus`, now standardized as `coverStatus`
 
 ### `siteLink`
 

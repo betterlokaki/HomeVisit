@@ -5,14 +5,27 @@
   import type { VisitCard as VisitCardType } from "../stores/visitStore";
   import type { SiteFilters } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
-  import { fetchCoverUpdate } from "../stores/visitApiClient";
+  import {
+    fetchCoverUpdate,
+    fetchAllSitesHistory,
+  } from "../stores/visit/visitApiClient";
+  import { historyStore } from "../stores/history";
   import type { User } from "@homevisit/common";
+  import dayjs from "dayjs";
+  import { filterCardsForHistory } from "./historyFilter";
 
-  // Calculate progress: sites with seen_status = "Seen" are considered done
-  $: completedCount = cards.filter(
+  // Filter cards based on history if viewing past date
+  $: filteredCards = filterCardsForHistory(
+    cards,
+    filters,
+    $historyStore.selectedDate
+  );
+
+  // Calculate progress: sites with seen_status = "Seen" are considered done (use filtered cards)
+  $: completedCount = filteredCards.filter(
     (card) => card.seen_status === "Seen"
   ).length;
-  $: totalCount = cards.length;
+  $: totalCount = filteredCards.length;
   $: progressPercent =
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -41,6 +54,20 @@
 
   // Load filters and users on mount
   let unsubscribeStore: any;
+  let unsubscribeHistoryStore: any;
+
+  // Subscribe to history store for selected date - make it reactive
+  let currentDisplayDate: string = dayjs().format("YYYY-MM-DD");
+
+  // React to history store changes
+  $: {
+    const storeState = $historyStore;
+    if (storeState.selectedDate === null) {
+      currentDisplayDate = dayjs().format("YYYY-MM-DD");
+    } else {
+      currentDisplayDate = storeState.selectedDate;
+    }
+  }
 
   onMount(() => {
     // Subscribe to store changes to detect group changes
@@ -53,12 +80,18 @@
       }
     });
 
+    // Subscribe to history store
+    unsubscribeHistoryStore = historyStore.subscribe(() => {
+      // React to history store changes
+    });
+
     // Initial load
     currentGroup = visitStore.getGroupName();
     loadGroupUsersForCurrentGroup();
 
     return () => {
       if (unsubscribeStore) unsubscribeStore();
+      if (unsubscribeHistoryStore) unsubscribeHistoryStore();
     };
   });
 
@@ -83,6 +116,48 @@
 
     // Reload cards with new filters
     await visitStore.updateFilters(filters);
+
+    // Load history for all sites after cards are loaded
+    await loadHistoryForAllSites();
+  }
+
+  // Load history for all sites
+  async function loadHistoryForAllSites() {
+    if (cards.length === 0) return;
+
+    try {
+      historyStore.setLoading(true);
+      const historyMap = await fetchAllSitesHistory(cards);
+
+      // Store history in history store
+      historyMap.forEach((history, siteId) => {
+        historyStore.setSiteHistory(siteId, history.history);
+      });
+
+      historyStore.setLoading(false);
+      console.log("Loaded history for", historyMap.size, "sites");
+    } catch (error) {
+      console.error("Failed to load history for all sites:", error);
+      historyStore.setError(
+        error instanceof Error ? error.message : "Failed to load history"
+      );
+      historyStore.setLoading(false);
+    }
+  }
+
+  // Track if history has been loaded for current cards
+  let lastCardsHash: string = "";
+
+  // React to cards changes to load history (only if cards actually changed)
+  $: {
+    const currentHash = cards
+      .map((c) => c.site_id)
+      .sort()
+      .join(",");
+    if (currentHash !== lastCardsHash && cards.length > 0) {
+      lastCardsHash = currentHash;
+      loadHistoryForAllSites();
+    }
   }
 
   // Handler for card selection
@@ -92,7 +167,7 @@
     if (selectedCardId !== null) {
       dispatch("cardSelect", selectedCardId);
       // Fetch cover update history for the selected card
-      const selectedCard = cards.find((c) => c.site_id === cardId);
+      const selectedCard = filteredCards.find((c) => c.site_id === cardId);
       if (selectedCard) {
         fetchCoverUpdateHistory(selectedCard);
       }
@@ -166,7 +241,7 @@
     <div class="flex gap-1.5 items-center relative shrink-0 w-full">
       <h2 class="text-xl font-bold text-white">ביקורים</h2>
       <span class="text-sm text-gray-400">
-        {cards.length} בתים
+        {filteredCards.length} בתים
       </span>
     </div>
 
@@ -250,6 +325,73 @@
         >
       </div>
     </div>
+
+    <!-- History Navigation Controls -->
+    <div
+      class="flex gap-2 items-center justify-center w-full mt-2 pt-2 border-t border-gray-700"
+    >
+      <!-- Previous Day Button -->
+      <button
+        on:click={() => historyStore.goToPreviousDay()}
+        class="flex items-center justify-center w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-gray-100 transition-colors"
+        title="יום קודם"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+
+      <!-- Current Date Display -->
+      <div
+        class="flex items-center gap-2 px-3 py-1 rounded bg-gray-800 text-sm text-gray-100"
+      >
+        <span>
+          {$historyStore.selectedDate === null
+            ? "היום"
+            : dayjs(currentDisplayDate).format("DD/MM/YYYY")}
+        </span>
+      </div>
+
+      <!-- Next Day Button (disabled if on today) -->
+      <button
+        on:click={() => historyStore.goToNextDay()}
+        disabled={!historyStore.canGoForward() ||
+          currentDisplayDate >= dayjs().format("YYYY-MM-DD")}
+        class="flex items-center justify-center w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="יום הבא"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+
+      <!-- Go to Today Button -->
+      <button
+        on:click={() => historyStore.goToToday()}
+        class="px-3 py-1 rounded text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+        title="חזור להיום"
+      >
+        היום
+      </button>
+    </div>
   </div>
 
   <!-- Scrollable Content Area -->
@@ -269,9 +411,9 @@
     {/if}
 
     <!-- Visit Cards List -->
-    {#if !loading && cards.length > 0}
+    {#if !loading && filteredCards.length > 0}
       <div class="flex flex-col gap-2 w-full pt-2 pb-5 px-3">
-        {#each cards as card (card.site_id)}
+        {#each filteredCards as card (card.site_id)}
           <VisitCard
             {card}
             isSelected={selectedCardId === card.site_id}
@@ -286,7 +428,7 @@
     {/if}
 
     <!-- Empty State -->
-    {#if !loading && cards.length === 0}
+    {#if !loading && filteredCards.length === 0}
       <div class="flex flex-col gap-1 items-center justify-center w-full py-4">
         <div class="text-6xl">📭</div>
         <p class="text-base font-semibold text-white">אין ביקורים להצגה</p>

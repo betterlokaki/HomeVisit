@@ -5,6 +5,7 @@ This is a standalone Svelte application converted from Figma Frame 2017:162 (Pag
 ## Project Overview
 
 This project is about analyzing aerial photography. The application contains:
+
 - **Tickets**: Each ticket represents an area that needs to be analyzed, showing the status of the area
 - **Map**: Shows the geographic location of each area
 
@@ -42,15 +43,15 @@ Frame 2017:162 (Root)
 
 ## Figma Elements → Code Components Mapping
 
-| Figma Element | Code Component | Purpose |
-|--------------|---------------|---------|
-| Frame 2017:162 | Root `<div>` | Main container with RTL layout |
-| Header 2017:163 | Header section | User toolbar |
-| Map Container 2017:176 | Map section | Geographic visualization |
-| Tickets Panel 2017:178 | Tickets panel | Visit management cards |
-| Inspector Dropdown 2017:184 | Dropdown menu | Filter by inspector |
-| Filter Buttons 2017:185-188 | Filter buttons | Status filters |
-| Visit Cards 2017:189-237 | Card components | Individual visit tickets |
+| Figma Element               | Code Component  | Purpose                        |
+| --------------------------- | --------------- | ------------------------------ |
+| Frame 2017:162              | Root `<div>`    | Main container with RTL layout |
+| Header 2017:163             | Header section  | User toolbar                   |
+| Map Container 2017:176      | Map section     | Geographic visualization       |
+| Tickets Panel 2017:178      | Tickets panel   | Visit management cards         |
+| Inspector Dropdown 2017:184 | Dropdown menu   | Filter by inspector            |
+| Filter Buttons 2017:185-188 | Filter buttons  | Status filters                 |
+| Visit Cards 2017:189-237    | Card components | Individual visit tickets       |
 
 ## Design Tokens
 
@@ -60,13 +61,45 @@ Frame 2017:162 (Root)
 - **Border Radius**: 4px (SM), 8px (LG)
 - **Layout**: RTL (Right-to-Left) for Hebrew text
 
-## Status Types
+## Status Types & Terminology
 
-1. **בתהליך ביקור** (In Progress) - Blue/Info theme
-2. **אין איסוף** (No Collection) - Red/Error theme
-3. **מחכה לביקור** (Awaiting Visit) - Yellow/Warning theme
-4. **בוצע** (Completed) - Neutral theme
-5. **בוצע חלקית** (Partially Completed) - Neutral theme
+### Core Status Concepts
+
+- **`coverStatus`**: Coverage status from external service (`"Full" | "Partial" | "No"`)
+
+  - Indicates whether new coverage data came in today
+  - **Never use `updateStatus` or `updatedStatus` - always use `coverStatus`**
+
+- **`seenStatus`**: Visit status of a site (`"Seen" | "Partial" | "Not Seen"`)
+
+  - Indicates whether the site has been visited/inspected
+
+- **`mergedStatus`**: Combined result of `coverStatus` + `seenStatus`
+  - Used for display and business logic decisions
+
+### Merged Status Display Types
+
+1. **אין איסוף** (No Collection) - Red 🔴
+
+   - `coverStatus = "No"` → Cannot see site (no coverage today)
+   - Always paired with `seenStatus = "Not Seen"`
+
+2. **מחכה לביקור** (Awaiting Visit) - Yellow 🟡
+
+   - `coverStatus = "Full"` + `seenStatus = "Not Seen"` → Full coverage available, not visited
+   - `coverStatus = "Partial"` + `seenStatus = "Not Seen"` → Partial coverage, not visited
+
+3. **בוצע חלקית** (Partially Completed) - Yellow/Orange 🟡
+
+   - `coverStatus = "Partial"` + `seenStatus = "Partial"` → Partial coverage, partially visited
+   - `coverStatus = "Full"` + `seenStatus = "Partial"` → Full coverage, partially visited
+
+4. **בוצע** (Completed) - Green 🟢
+
+   - `coverStatus = "Full"` + `seenStatus = "Seen"` → Full coverage, fully visited
+
+5. **בתהליך ביקור** (In Progress) - Blue/Info theme
+   - Active visit state (UI state, not a merged status)
 
 ## Installation & Running
 
@@ -101,4 +134,3 @@ The following handlers need to be implemented:
 - The layout is fully RTL (right-to-left) for Hebrew text
 - Dark theme colors match Figma design tokens exactly
 - Map markers are positioned absolutely within the map container
-

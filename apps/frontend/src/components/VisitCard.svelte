@@ -2,35 +2,94 @@
   import { createEventDispatcher } from "svelte";
   import type { VisitCard } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
+  import { historyStore } from "../stores/history";
   import ActionButtons from "./ActionButtons.svelte";
   import MenuButton from "./MenuButton.svelte";
-  import HistoryPopup from "./HistoryPopup.svelte";
   import type { DropdownMenuItem } from "./types/dropdownMenu";
   import { getUpdatedStatusDisplay, formatDate } from "../utils/statusDisplay";
+  import dayjs from "dayjs";
 
   export let card: VisitCard;
   export let isSelected: boolean = false;
 
   const dispatch = createEventDispatcher();
   const cardData = card as any;
-  let isHistoryPopupOpen = false;
+
+  // Get the current date from store reactively
+  $: currentDate =
+    $historyStore.selectedDate === null
+      ? dayjs().format("YYYY-MM-DD")
+      : $historyStore.selectedDate;
+
+  // Get historical entry if viewing a past date
+  $: isViewingHistory = currentDate !== dayjs().format("YYYY-MM-DD");
+  $: historyEntry = isViewingHistory
+    ? historyStore.getSiteHistoryEntry(card.site_id, currentDate)
+    : null;
+
+  // Use historical data if available, otherwise use current card data
+  $: displayCoverStatus = historyEntry
+    ? historyEntry.coverStatus
+    : card.updatedStatus;
+  $: displaySeenStatus = historyEntry
+    ? historyEntry.visitStatus
+    : card.seen_status;
 
   function onCardClick() {
     dispatch("select", card.site_id);
   }
 
   async function handleCompleted() {
-    await visitStore.updateCardStatus(card.site_id, "Seen");
+    if (isViewingHistory && historyEntry) {
+      // Update history
+      const groupName = visitStore.getGroupName();
+      await historyStore.updateHistoryStatus(
+        card.site_id,
+        cardData.site_name,
+        groupName,
+        currentDate,
+        "Seen"
+      );
+    } else {
+      // Update current status
+      await visitStore.updateCardStatus(card.site_id, "Seen");
+    }
     dispatch("select", card.site_id);
   }
 
   async function handlePartiallyCompleted() {
-    await visitStore.updateCardStatus(card.site_id, "Partial");
+    if (isViewingHistory && historyEntry) {
+      // Update history
+      const groupName = visitStore.getGroupName();
+      await historyStore.updateHistoryStatus(
+        card.site_id,
+        cardData.site_name,
+        groupName,
+        currentDate,
+        "Partial"
+      );
+    } else {
+      // Update current status
+      await visitStore.updateCardStatus(card.site_id, "Partial");
+    }
     dispatch("select", card.site_id);
   }
 
   async function handleNotDone() {
-    await visitStore.updateCardStatus(card.site_id, "Not Seen");
+    if (isViewingHistory && historyEntry) {
+      // Update history
+      const groupName = visitStore.getGroupName();
+      await historyStore.updateHistoryStatus(
+        card.site_id,
+        cardData.site_name,
+        groupName,
+        currentDate,
+        "Not Seen"
+      );
+    } else {
+      // Update current status
+      await visitStore.updateCardStatus(card.site_id, "Not Seen");
+    }
     dispatch("select", card.site_id);
   }
 
@@ -41,23 +100,7 @@
     }
   }
 
-  // History icon SVG (16x16 with border as per Figma)
-  const historyIcon = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 2.667C5.427 2.667 3.333 4.76 3.333 7.333C3.333 9.907 5.427 12 8 12C10.573 12 12.667 9.907 12.667 7.333C12.667 4.76 10.573 2.667 8 2.667ZM8 10.667C6.16 10.667 4.667 9.173 4.667 7.333C4.667 5.493 6.16 4 8 4C9.84 4 11.333 5.493 11.333 7.333C11.333 9.173 9.84 10.667 8 10.667Z" stroke="rgba(255, 255, 255, 0.65)" stroke-width="1" fill="none"/>
-    <path d="M8 5.333V7.333L9.333 8.667" stroke="rgba(255, 255, 255, 0.65)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  </svg>`;
-
-  function openHistoryPopup() {
-    isHistoryPopupOpen = true;
-  }
-
-  const menuItems: DropdownMenuItem[] = [
-    {
-      title: "היסטוריה",
-      icon: historyIcon,
-      action: openHistoryPopup,
-    },
-  ];
+  const menuItems: DropdownMenuItem[] = [];
 </script>
 
 <!-- Simple card with just the lightning bolt button at top-left -->
@@ -87,23 +130,23 @@
 
     <!-- Lightning Bolt Button -->
     <a
-      href={card.updatedStatus === "No" ? "#" : card.siteLink}
+      href={displayCoverStatus === "No" ? "#" : card.siteLink}
       target="_self"
       rel="noopener noreferrer"
       on:click|stopPropagation={(e) => {
-        if (card.updatedStatus === "No") {
+        if (displayCoverStatus === "No") {
           e.preventDefault();
         }
       }}
       on:keydown={(e) => handleKeyDown(e, () => {})}
-      class="border {card.updatedStatus === 'No'
+      class="border {displayCoverStatus === 'No'
         ? 'border-gray-500 bg-gray-800 cursor-not-allowed opacity-50'
         : 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer'} flex items-center justify-center gap-1 h-6 px-1.5 rounded transition-colors group"
-      title={card.updatedStatus === "No" ? "אין איסוף" : "פתח בברק"}
-      style={card.updatedStatus === "No" ? "pointer-events: none;" : ""}
+      title={displayCoverStatus === "No" ? "אין איסוף" : "פתח בברק"}
+      style={displayCoverStatus === "No" ? "pointer-events: none;" : ""}
     >
       <div
-        class={card.updatedStatus === "No"
+        class={displayCoverStatus === "No"
           ? "text-gray-500"
           : "text-gray-100 group-hover:text-white"}
       >
@@ -123,25 +166,25 @@
           />
         </svg>
       </div>
-      {#if card.updatedStatus !== "No"}
+      {#if displayCoverStatus !== "No"}
         <span class="text-xs text-gray-100 group-hover:text-white">פתח</span>
       {/if}
     </a>
 
     <!-- Separator -->
-    {#if isSelected && card.updatedStatus !== "No"}
+    {#if isSelected && displayCoverStatus !== "No"}
       <div class="h-4 w-px bg-gray-600"></div>
     {/if}
 
     <!-- Action Buttons - Show when selected and updatedStatus is not 'No' -->
-    {#if isSelected && card.updatedStatus !== "No"}
+    {#if isSelected && displayCoverStatus !== "No"}
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div on:click|stopPropagation>
         <ActionButtons
-          currentStatus={card.seen_status}
-          updatedStatus={card.updatedStatus}
-          disabledButton={card.seen_status === "Partial" ? "completed" : null}
+          currentStatus={displaySeenStatus}
+          updatedStatus={displayCoverStatus}
+          disabledButton={displaySeenStatus === "Partial" ? "completed" : null}
           on:completed={handleCompleted}
           on:partiallyCompleted={handlePartiallyCompleted}
           on:notDone={handleNotDone}
@@ -155,23 +198,23 @@
     <div class="flex flex-col gap-1.5 items-end w-20">
       <!-- Status Badge -->
       <div
-        class="{getUpdatedStatusDisplay(card.updatedStatus, card.seen_status)
+        class="{getUpdatedStatusDisplay(displayCoverStatus, displaySeenStatus)
           .borderColor} border flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-sm w-full"
       >
         <p
           class="font-normal text-xs leading-3 {getUpdatedStatusDisplay(
-            card.updatedStatus,
-            card.seen_status
+            displayCoverStatus,
+            displaySeenStatus
           ).textColor} text-center"
           style="font-size: 12px;"
         >
-          {getUpdatedStatusDisplay(card.updatedStatus, card.seen_status).text}
+          {getUpdatedStatusDisplay(displayCoverStatus, displaySeenStatus).text}
         </p>
         <!-- Small status icon circle -->
         <div
           class="w-2 h-2 rounded-full {getUpdatedStatusDisplay(
-            card.updatedStatus,
-            card.seen_status
+            displayCoverStatus,
+            displaySeenStatus
           ).textColor.replace('text-', 'bg-')}"
         ></div>
       </div>
@@ -214,14 +257,6 @@
       </div>
     </div>
   </div>
-
-  <!-- History Popup -->
-  <HistoryPopup
-    siteId={card.site_id}
-    groupId={card.group_id}
-    siteName={cardData.site_name}
-    bind:isOpen={isHistoryPopupOpen}
-  />
 </div>
 
 <style>

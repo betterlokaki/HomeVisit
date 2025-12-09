@@ -14,4 +14,5 @@ export {
   updateSiteStatus,
   fetchGroupUsers,
   fetchCoverUpdate,
+  fetchAllSitesHistory,
 } from "./visitApiClient";

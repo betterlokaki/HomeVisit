@@ -61,7 +61,8 @@ export const sitesController = new SitesController(
 export const groupController = new GroupController(groupService);
 export const userController = new UserController(userService);
 export const siteHistoryController = new SiteHistoryController(
-  siteHistoryService
+  siteHistoryService,
+  siteService
 );
 export const authController = new AuthController(userService);
 export const coverUpdateController = new CoverUpdateController(

@@ -98,3 +98,23 @@ export async function fetchCoverUpdate(
     return null;
   }
 }
+
+/**
+ * Fetch history for all sites in parallel
+ */
+export async function fetchAllSitesHistory(
+  sites: VisitCard[]
+): Promise<Map<number, MergedHistoryResponse>> {
+  const historyMap = new Map<number, MergedHistoryResponse>();
+
+  // Fetch all histories in parallel
+  const promises = sites.map(async (site) => {
+    const history = await fetchCoverUpdate(site.site_id, site.group_id);
+    if (history) {
+      historyMap.set(site.site_id, history);
+    }
+  });
+
+  await Promise.all(promises);
+  return historyMap;
+}
