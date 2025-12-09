@@ -8,11 +8,17 @@
   import {
     fetchCoverUpdate,
     fetchAllSitesHistory,
+    fetchSites,
   } from "../stores/visit/visitApiClient";
   import { historyStore } from "../stores/history";
   import type { User } from "@homevisit/common";
   import dayjs from "dayjs";
   import { filterCardsForHistory } from "./historyFilter";
+  import { jsonToCsv, downloadCsv } from "../utils/csvExporter";
+  import {
+    buildCsvSummaryData,
+    generateCsvFilename,
+  } from "../utils/csvSummaryBuilder";
 
   // Filter cards based on history if viewing past date
   $: filteredCards = filterCardsForHistory(
@@ -225,6 +231,46 @@
     // Reload cards with new filters
     await visitStore.updateFilters(filters);
   }
+
+  // Handle CSV download
+  async function handleDownloadCsv() {
+    try {
+      // Show loading state (optional - you could add a loading indicator)
+      console.log("Starting CSV download...");
+
+      // Fetch all sites from backend (no filters)
+      const allSites = await fetchSites(currentGroup, {});
+      console.log("Fetched sites:", allSites.length);
+
+      // Fetch history for all sites
+      const historyMap = await fetchAllSitesHistory(allSites);
+      console.log("Fetched history for sites:", historyMap.size);
+
+      // Build CSV data structure
+      const csvData = buildCsvSummaryData(allSites, historyMap);
+      console.log("CSV data sample:", csvData.slice(0, 2));
+      console.log("CSV data total rows:", csvData.length);
+
+      // Convert to CSV string
+      const csvContent = jsonToCsv(csvData);
+      console.log("CSV content length:", csvContent.length);
+      console.log(
+        "CSV content preview (first 500 chars):",
+        csvContent.substring(0, 500)
+      );
+
+      // Generate filename with date range
+      const filename = generateCsvFilename();
+
+      // Download the file
+      downloadCsv(csvContent, filename);
+
+      console.log("CSV download completed");
+    } catch (error) {
+      console.error("Failed to download CSV:", error);
+      alert("שגיאה בהורדת הקובץ. אנא נסה שוב.");
+    }
+  }
 </script>
 
 <!-- Tickets Panel - Right Side with Dark Theme -->
@@ -243,6 +289,36 @@
       <span class="text-sm text-gray-400">
         {filteredCards.length} בתים
       </span>
+
+      <!-- Download CSV Button - Left side (end in RTL, visually left) -->
+      <div class="relative group mr-auto">
+        <button
+          on:click={handleDownloadCsv}
+          class="flex items-center justify-center w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-gray-100 transition-colors"
+          type="button"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </button>
+        <!-- Tooltip -->
+        <div
+          class="absolute right-full mr-2 px-2 py-1 text-xs text-white bg-gray-800 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50"
+        >
+          הורד מידע סיכומי
+        </div>
+      </div>
     </div>
 
     <!-- Filter Section -->
