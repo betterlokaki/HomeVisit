@@ -8,10 +8,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "dayjs": "^1.11.19",
     "dotenv": "^16.6.1",
     "http-proxy-agent": "^7.0.2",
     "maplibre-gl": "^4.7.0",
-    "svelte": "^4.0.0"
+    "svelte": "^4.0.0",
+    "svelte-calendar": "^3.1.6"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.1.0",

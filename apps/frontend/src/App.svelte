@@ -10,7 +10,6 @@
   import Header from "./components/Header.svelte";
   import ProgressBar from "./components/ProgressBar.svelte";
   import { visitStore } from "./stores/visitStore";
-  import { loadFilters } from "./utils/filterStorage";
 
   let cardData: any[] = [];
   let isLoading = false;
@@ -23,14 +22,7 @@
   $: totalCount = cardData.length;
 
   onMount(async () => {
-    // Load initial filters from localStorage
-    const savedFilters = loadFilters();
-    if (savedFilters) {
-      await visitStore.updateFilters(savedFilters);
-    } else {
-      // Load without filters on first visit
-      await visitStore.loadVisitCards();
-    }
+    await visitStore.loadVisitCards();
   });
 
   // Subscribe to the visit store

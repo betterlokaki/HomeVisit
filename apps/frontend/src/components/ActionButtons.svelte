@@ -48,13 +48,13 @@
   }
 </script>
 
-<div class="flex gap-2 items-center">
+<div class="flex gap-1.5 items-center">
   <!-- בוצע (Completed) Button -->
   <button
     on:click={handleCompleted}
     on:keydown={(e) => handleKeyDown(e, handleCompleted)}
     disabled={disabledButton === "completed" || updatedStatus !== "Full"}
-    class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
+    class="flex items-center justify-center px-2 py-0.5 rounded transition-colors {getButtonClass(
       'Seen',
       disabledButton === 'completed' || updatedStatus !== 'Full'
     )}"
@@ -64,7 +64,7 @@
         ? "לא זמין בסטטוס זה"
         : "בוצע"}
   >
-    <p class="font-normal text-sm text-right leading-5">בוצע</p>
+    <p class="font-normal text-xs text-right leading-4">בוצע</p>
   </button>
 
   <!-- בוצע חלקית (Partially Completed) Button -->
@@ -72,13 +72,13 @@
     on:click={handlePartiallyCompleted}
     on:keydown={(e) => handleKeyDown(e, handlePartiallyCompleted)}
     disabled={disabledButton === "partiallyCompleted"}
-    class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
+    class="flex items-center justify-center px-2 py-0.5 rounded transition-colors {getButtonClass(
       'Partial',
       disabledButton === 'partiallyCompleted'
     )}"
     title="בוצע חלקית"
   >
-    <p class="font-normal text-sm text-right leading-5">בוצע חלקית</p>
+    <p class="font-normal text-xs text-right leading-4">בוצע חלקית</p>
   </button>
 
   <!-- לא בוצע (Not done) Button -->
@@ -86,12 +86,12 @@
     on:click={handleNotDone}
     on:keydown={(e) => handleKeyDown(e, handleNotDone)}
     disabled={disabledButton === "notDone"}
-    class="flex items-center justify-center px-4 py-1 rounded-lg transition-colors {getButtonClass(
+    class="flex items-center justify-center px-2 py-0.5 rounded transition-colors {getButtonClass(
       'Not Seen',
       disabledButton === 'notDone'
     )}"
     title="לא בוצע"
   >
-    <p class="font-normal text-sm text-right leading-5">לא בוצע</p>
+    <p class="font-normal text-xs text-right leading-4">לא בוצע</p>
   </button>
 </div>

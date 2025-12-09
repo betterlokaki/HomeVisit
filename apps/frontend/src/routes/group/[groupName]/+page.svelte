@@ -4,7 +4,6 @@
   import MapContainer from "../../../components/MapContainer.svelte";
   import TicketsPanel from "../../../components/TicketsPanel.svelte";
   import { visitStore } from "../../../stores/visitStore";
-  import { loadFilters } from "../../../utils/filterStorage";
 
   let cardData: any[] = [];
   let isLoading = false;
@@ -17,14 +16,7 @@
     console.log("Setting group to:", groupName);
     visitStore.setGroup(groupName);
 
-    // Load initial filters from localStorage
-    const savedFilters = loadFilters();
-    if (savedFilters) {
-      await visitStore.updateFilters(savedFilters);
-    } else {
-      // Load without filters on first visit
-      await visitStore.loadVisitCards();
-    }
+    await visitStore.loadVisitCards();
   });
 
   // React to group parameter changes in the URL

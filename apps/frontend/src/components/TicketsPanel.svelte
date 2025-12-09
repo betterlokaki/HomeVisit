@@ -6,7 +6,6 @@
   import type { SiteFilters } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
   import { fetchCoverUpdate } from "../stores/visitApiClient";
-  import { saveFilters } from "../utils/filterStorage";
   import type { User } from "@homevisit/common";
 
   // Calculate progress: sites with seen_status = "Seen" are considered done
@@ -81,7 +80,6 @@
       .map((u) => u.username)
       .filter((u) => u !== undefined) as string[];
     console.log("Auto-selected users:", filters.selectedUsers);
-    saveFilters(filters);
 
     // Reload cards with new filters
     await visitStore.updateFilters(filters);
@@ -141,8 +139,6 @@
   async function toggleFilter(filterName: keyof SiteFilters) {
     if (filterName !== "selectedUsers") {
       filters[filterName] = !filters[filterName];
-      // Save to localStorage
-      saveFilters(filters);
       // Reload cards with new filters
       await visitStore.updateFilters(filters);
     }
@@ -151,8 +147,6 @@
   // Handle user selection change
   async function handleUsersChange(event: CustomEvent<string[]>) {
     filters.selectedUsers = event.detail;
-    // Save to localStorage
-    saveFilters(filters);
     // Reload cards with new filters
     await visitStore.updateFilters(filters);
   }
