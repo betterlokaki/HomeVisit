@@ -14,11 +14,11 @@
   import type { User } from "@homevisit/common";
   import dayjs from "dayjs";
   import { filterCardsForHistory } from "./historyFilter";
-  import { jsonToCsv, downloadCsv } from "../utils/csvExporter";
   import {
-    buildCsvSummaryData,
-    generateCsvFilename,
-  } from "../utils/csvSummaryBuilder";
+    buildXlsxWorkbook,
+    downloadXlsx,
+    generateXlsxFilename,
+  } from "../utils/xlsxExporter";
 
   // Filter cards based on history if viewing past date
   $: filteredCards = filterCardsForHistory(
@@ -232,11 +232,11 @@
     await visitStore.updateFilters(filters);
   }
 
-  // Handle CSV download
+  // Handle XLSX download
   async function handleDownloadCsv() {
     try {
       // Show loading state (optional - you could add a loading indicator)
-      console.log("Starting CSV download...");
+      console.log("Starting XLSX download...");
 
       // Fetch all sites from backend (no filters)
       const allSites = await fetchSites(currentGroup, {});
@@ -246,28 +246,19 @@
       const historyMap = await fetchAllSitesHistory(allSites);
       console.log("Fetched history for sites:", historyMap.size);
 
-      // Build CSV data structure
-      const csvData = buildCsvSummaryData(allSites, historyMap);
-      console.log("CSV data sample:", csvData.slice(0, 2));
-      console.log("CSV data total rows:", csvData.length);
-
-      // Convert to CSV string
-      const csvContent = jsonToCsv(csvData);
-      console.log("CSV content length:", csvContent.length);
-      console.log(
-        "CSV content preview (first 500 chars):",
-        csvContent.substring(0, 500)
-      );
+      // Build XLSX workbook with RTL, colors, and proper date formatting
+      const workbook = await buildXlsxWorkbook(allSites, historyMap);
+      console.log("XLSX workbook created");
 
       // Generate filename with date range
-      const filename = generateCsvFilename();
+      const filename = generateXlsxFilename();
 
       // Download the file
-      downloadCsv(csvContent, filename);
+      await downloadXlsx(workbook, filename);
 
-      console.log("CSV download completed");
+      console.log("XLSX download completed");
     } catch (error) {
-      console.error("Failed to download CSV:", error);
+      console.error("Failed to download XLSX:", error);
       alert("שגיאה בהורדת הקובץ. אנא נסה שוב.");
     }
   }
