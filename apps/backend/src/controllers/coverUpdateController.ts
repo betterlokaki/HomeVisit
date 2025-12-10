@@ -13,6 +13,7 @@ import type { ISiteService } from "../services/site/interfaces/ISiteService.ts";
 import type { ICacheService } from "../services/cache/interfaces/ICacheService.ts";
 import { sendSuccess, sendError } from "../utils/responseHelper.ts";
 import { logger } from "../middleware/logger.ts";
+import { toDateKey } from "../services/historyMerge/dateKeyHelper.ts";
 
 export class CoverUpdateController {
   constructor(
@@ -60,10 +61,15 @@ export class CoverUpdateController {
       const cacheKey = this.buildCacheKey(site.site_name, group.group_name);
       const cachedResponse = this.cacheService.get(cacheKey);
       if (cachedResponse) {
+        // Log what we're returning from cache to verify it's correct
+        const dec9Cached = cachedResponse.history?.find(
+          (e: any) => toDateKey(e.date) === "2025-12-09"
+        );
         logger.info("Returning cached merged history", {
           siteId,
           groupId,
           cacheKey,
+          cacheEntryCount: cachedResponse.history?.length || 0,
         });
         sendSuccess(res, cachedResponse);
         return;
@@ -81,11 +87,55 @@ export class CoverUpdateController {
         group.data_refreshments
       );
 
+      // Force a fresh query by adding a timestamp parameter to bust any caches
+      // Also add delay to ensure database transaction is committed
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Fetch visit history - this should get fresh data from database
       const visitHistory =
         await this.siteHistoryService.getSiteHistoryByNameAndGroup(
           site.site_name,
           group.group_name
         );
+
+      // Log to verify we're getting the correct data
+      const dec9Entry = visitHistory.find(
+        (v) => toDateKey(v.recorded_date) === "2025-12-09"
+      );
+      if (dec9Entry) {
+        logger.info("✅ Visit history for 2025-12-09 BEFORE merge", {
+          siteName: site.site_name,
+          status: dec9Entry.status,
+          recorded_date: dec9Entry.recorded_date,
+          history_id: (dec9Entry as any).history_id,
+        });
+      } else {
+        logger.warn("❌ No visit history entry found for 2025-12-09", {
+          siteName: site.site_name,
+          allDates: visitHistory
+            .map((v) => toDateKey(v.recorded_date))
+            .slice(-5),
+        });
+      }
+
+      // Log ALL visit history entries for debugging
+      logger.info("Visit history fetched for merge", {
+        siteName: site.site_name,
+        groupName: group.group_name,
+        visitHistoryCount: visitHistory.length,
+        dec9Entries: visitHistory
+          .filter((v) => toDateKey(v.recorded_date) === "2025-12-09")
+          .map((v) => ({
+            recorded_date: v.recorded_date,
+            status: v.status,
+            dateKey: toDateKey(v.recorded_date),
+          })),
+        allRecentEntries: visitHistory.slice(-5).map((v) => ({
+          recorded_date: v.recorded_date,
+          status: v.status,
+          dateKey: toDateKey(v.recorded_date),
+        })),
+      });
 
       const mergedHistory = this.historyMergeService.mergeHistory(
         coverUpdates,

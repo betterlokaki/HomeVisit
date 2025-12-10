@@ -53,12 +53,16 @@
   <button
     on:click={handleCompleted}
     on:keydown={(e) => handleKeyDown(e, handleCompleted)}
-    disabled={disabledButton === "completed" || updatedStatus !== "Full"}
+    disabled={disabledButton === "completed" ||
+      updatedStatus === "Partial" ||
+      updatedStatus === "No"}
     class="flex items-center justify-center px-2 py-0.5 rounded transition-colors {getButtonClass(
       'Seen',
-      disabledButton === 'completed' || updatedStatus !== 'Full'
+      disabledButton === 'completed' ||
+        updatedStatus === 'Partial' ||
+        updatedStatus === 'No'
     )}"
-    title={updatedStatus !== "Full"
+    title={updatedStatus === "Partial" || updatedStatus === "No"
       ? "לא ניתן לבצע, אין איסוף מלא"
       : disabledButton === "completed"
         ? "לא זמין בסטטוס זה"

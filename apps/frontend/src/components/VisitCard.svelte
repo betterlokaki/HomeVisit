@@ -21,76 +21,137 @@
       ? dayjs().format("YYYY-MM-DD")
       : $historyStore.selectedDate;
 
-  // Get historical entry if viewing a past date
+  // Get historical entry for the selected date - make it reactive to store changes
+  // Access the store reactively - accessing .size forces Svelte to track Map changes
+  $: void $historyStore.historyData.size; // Force reactivity tracking
+  $: historyEntry = (() => {
+    // Access store state directly to ensure reactivity
+    const siteHistory = $historyStore.historyData.get(card.site_id);
+    if (!siteHistory) {
+      return null;
+    }
+    return siteHistory.get(currentDate) || null;
+  })();
   $: isViewingHistory = currentDate !== dayjs().format("YYYY-MM-DD");
-  $: historyEntry = isViewingHistory
-    ? historyStore.getSiteHistoryEntry(card.site_id, currentDate)
-    : null;
 
-  // Use historical data if available, otherwise use current card data
-  $: displayCoverStatus = historyEntry
-    ? historyEntry.coverStatus
-    : card.updatedStatus;
-  $: displaySeenStatus = historyEntry
-    ? historyEntry.visitStatus
-    : card.seen_status;
+  // Use historical data if viewing past date and history exists, otherwise use current card data
+  // When viewing history, always check history first, even if entry doesn't exist yet
+  $: displayCoverStatus =
+    isViewingHistory && historyEntry
+      ? historyEntry.coverStatus
+      : card.updatedStatus;
+  $: displaySeenStatus =
+    isViewingHistory && historyEntry
+      ? historyEntry.visitStatus
+      : card.seen_status;
+  // Use mergedStatus from history if viewing past date, otherwise calculate from current status
+  $: displayMergedStatus =
+    isViewingHistory && historyEntry ? historyEntry.mergedStatus : undefined; // undefined means use current status calculation
 
   function onCardClick() {
     dispatch("select", card.site_id);
   }
 
   async function handleCompleted() {
-    if (isViewingHistory && historyEntry) {
-      // Update history
-      const groupName = visitStore.getGroupName();
-      await historyStore.updateHistoryStatus(
-        card.site_id,
-        cardData.site_name,
-        groupName,
-        currentDate,
-        "Seen"
+    try {
+      if (isViewingHistory) {
+        // Update history - always try to update even if entry doesn't exist yet
+        const groupName = visitStore.getGroupName();
+        console.log("Updating history status to Seen", {
+          siteId: card.site_id,
+          siteName: cardData.site_name,
+          groupName,
+          date: currentDate,
+          groupId: card.group_id,
+        });
+        await historyStore.updateHistoryStatus(
+          card.site_id,
+          cardData.site_name,
+          groupName,
+          currentDate,
+          "Seen",
+          card.group_id
+        );
+        console.log("History status updated successfully to Seen");
+      } else {
+        // Update current status
+        await visitStore.updateCardStatus(card.site_id, "Seen");
+      }
+      dispatch("select", card.site_id);
+    } catch (error) {
+      console.error("Failed to update status to Seen:", error);
+      alert(
+        `שגיאה בעדכון הסטטוס: ${error instanceof Error ? error.message : "שגיאה לא ידועה"}`
       );
-    } else {
-      // Update current status
-      await visitStore.updateCardStatus(card.site_id, "Seen");
     }
-    dispatch("select", card.site_id);
   }
 
   async function handlePartiallyCompleted() {
-    if (isViewingHistory && historyEntry) {
-      // Update history
-      const groupName = visitStore.getGroupName();
-      await historyStore.updateHistoryStatus(
-        card.site_id,
-        cardData.site_name,
-        groupName,
-        currentDate,
-        "Partial"
+    try {
+      if (isViewingHistory) {
+        // Update history - always try to update even if entry doesn't exist yet
+        const groupName = visitStore.getGroupName();
+        console.log("Updating history status to Partial", {
+          siteId: card.site_id,
+          siteName: cardData.site_name,
+          groupName,
+          date: currentDate,
+          groupId: card.group_id,
+        });
+        await historyStore.updateHistoryStatus(
+          card.site_id,
+          cardData.site_name,
+          groupName,
+          currentDate,
+          "Partial",
+          card.group_id
+        );
+        console.log("History status updated successfully to Partial");
+      } else {
+        // Update current status
+        await visitStore.updateCardStatus(card.site_id, "Partial");
+      }
+      dispatch("select", card.site_id);
+    } catch (error) {
+      console.error("Failed to update status to Partial:", error);
+      alert(
+        `שגיאה בעדכון הסטטוס: ${error instanceof Error ? error.message : "שגיאה לא ידועה"}`
       );
-    } else {
-      // Update current status
-      await visitStore.updateCardStatus(card.site_id, "Partial");
     }
-    dispatch("select", card.site_id);
   }
 
   async function handleNotDone() {
-    if (isViewingHistory && historyEntry) {
-      // Update history
-      const groupName = visitStore.getGroupName();
-      await historyStore.updateHistoryStatus(
-        card.site_id,
-        cardData.site_name,
-        groupName,
-        currentDate,
-        "Not Seen"
+    try {
+      if (isViewingHistory) {
+        // Update history - always try to update even if entry doesn't exist yet
+        const groupName = visitStore.getGroupName();
+        console.log("Updating history status to Not Seen", {
+          siteId: card.site_id,
+          siteName: cardData.site_name,
+          groupName,
+          date: currentDate,
+          groupId: card.group_id,
+        });
+        await historyStore.updateHistoryStatus(
+          card.site_id,
+          cardData.site_name,
+          groupName,
+          currentDate,
+          "Not Seen",
+          card.group_id
+        );
+        console.log("History status updated successfully to Not Seen");
+      } else {
+        // Update current status
+        await visitStore.updateCardStatus(card.site_id, "Not Seen");
+      }
+      dispatch("select", card.site_id);
+    } catch (error) {
+      console.error("Failed to update status to Not Seen:", error);
+      alert(
+        `שגיאה בעדכון הסטטוס: ${error instanceof Error ? error.message : "שגיאה לא ידועה"}`
       );
-    } else {
-      // Update current status
-      await visitStore.updateCardStatus(card.site_id, "Not Seen");
     }
-    dispatch("select", card.site_id);
   }
 
   function handleKeyDown(event: KeyboardEvent, handler: () => void) {
@@ -172,19 +233,20 @@
     </a>
 
     <!-- Separator -->
-    {#if isSelected && displayCoverStatus !== "No"}
+    {#if isSelected && (displayCoverStatus !== "No" || isViewingHistory)}
       <div class="h-4 w-px bg-gray-600"></div>
     {/if}
 
-    <!-- Action Buttons - Show when selected and updatedStatus is not 'No' -->
-    {#if isSelected && displayCoverStatus !== "No"}
+    <!-- Action Buttons - Show when selected and (updatedStatus is not 'No' OR viewing history) -->
+    <!-- When viewing history, always allow editing even if coverStatus was "No" -->
+    {#if isSelected && (displayCoverStatus !== "No" || isViewingHistory)}
       <!-- svelte-ignore a11y-click-events-have-key-events -->
       <!-- svelte-ignore a11y-no-static-element-interactions -->
       <div on:click|stopPropagation>
         <ActionButtons
           currentStatus={displaySeenStatus}
           updatedStatus={displayCoverStatus}
-          disabledButton={displaySeenStatus === "Partial" ? "completed" : null}
+          disabledButton={null}
           on:completed={handleCompleted}
           on:partiallyCompleted={handlePartiallyCompleted}
           on:notDone={handleNotDone}
@@ -198,23 +260,33 @@
     <div class="flex flex-col gap-1.5 items-end w-20">
       <!-- Status Badge -->
       <div
-        class="{getUpdatedStatusDisplay(displayCoverStatus, displaySeenStatus)
+        class="{getUpdatedStatusDisplay(
+          displayCoverStatus,
+          displaySeenStatus,
+          displayMergedStatus
+        )
           .borderColor} border flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-sm w-full"
       >
         <p
           class="font-normal text-xs leading-3 {getUpdatedStatusDisplay(
             displayCoverStatus,
-            displaySeenStatus
+            displaySeenStatus,
+            displayMergedStatus
           ).textColor} text-center"
           style="font-size: 12px;"
         >
-          {getUpdatedStatusDisplay(displayCoverStatus, displaySeenStatus).text}
+          {getUpdatedStatusDisplay(
+            displayCoverStatus,
+            displaySeenStatus,
+            displayMergedStatus
+          ).text}
         </p>
         <!-- Small status icon circle -->
         <div
           class="w-2 h-2 rounded-full {getUpdatedStatusDisplay(
             displayCoverStatus,
-            displaySeenStatus
+            displaySeenStatus,
+            displayMergedStatus
           ).textColor.replace('text-', 'bg-')}"
         ></div>
       </div>

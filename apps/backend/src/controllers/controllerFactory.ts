@@ -16,6 +16,7 @@ import {
   EnrichmentCacheService,
   EnrichmentCacheScheduler,
   GenericCacheService,
+  HistoryPreloadScheduler,
 } from "../services/index.ts";
 import type { MergedHistoryResponse } from "@homevisit/common";
 import { SitesController } from "./sitesController.ts";
@@ -50,19 +51,32 @@ export const enrichmentCacheScheduler = new EnrichmentCacheScheduler(
   enrichmentCacheService
 );
 
+// Create history preload scheduler with dependencies
+export const historyPreloadScheduler = new HistoryPreloadScheduler(
+  groupService,
+  siteService,
+  coverUpdateService,
+  historyMergeService,
+  siteHistoryService,
+  coverUpdateCacheService
+);
+
 // Export controller instances with injected dependencies
 export const sitesController = new SitesController(
   siteService,
   groupService,
   enrichmentService,
   filterService,
-  enrichmentCacheService
+  enrichmentCacheService,
+  coverUpdateCacheService,
+  siteHistoryService
 );
 export const groupController = new GroupController(groupService);
 export const userController = new UserController(userService);
 export const siteHistoryController = new SiteHistoryController(
   siteHistoryService,
-  siteService
+  siteService,
+  coverUpdateCacheService
 );
 export const authController = new AuthController(userService);
 export const coverUpdateController = new CoverUpdateController(

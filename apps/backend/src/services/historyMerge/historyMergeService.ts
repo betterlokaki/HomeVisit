@@ -18,18 +18,42 @@ export class HistoryMergeService implements IHistoryMergeService {
     visitHistory: SiteHistory[]
   ): MergedHistoryEntry[] {
     const visitMap = new Map<string, SeenStatus>();
-    for (const visit of visitHistory) {
-      visitMap.set(toDateKey(visit.recorded_date), visit.status);
+
+    // Build visit map - if multiple entries for same date, use the LATEST one (highest history_id)
+    // Sort by recorded_date DESC then by history_id DESC to get most recent
+    const sortedVisitHistory = [...visitHistory].sort((a, b) => {
+      const dateA = new Date(a.recorded_date).getTime();
+      const dateB = new Date(b.recorded_date).getTime();
+      if (dateA !== dateB) return dateB - dateA; // Newest first
+      // If same date, use history_id (assuming higher ID = newer)
+      const idA = (a as any).history_id || 0;
+      const idB = (b as any).history_id || 0;
+      return idB - idA;
+    });
+
+    for (const visit of sortedVisitHistory) {
+      const key = toDateKey(visit.recorded_date);
+      // Only set if not already set (first one wins, which is the newest due to sort)
+      if (!visitMap.has(key)) {
+        visitMap.set(key, visit.status);
+      }
     }
 
     const mergedHistory: MergedHistoryEntry[] = coverUpdates.map((update) => {
       const dateKey = toDateKey(update.date);
       const visitStatus: SeenStatus = visitMap.get(dateKey) || "Not Seen";
+
+      const finalVisitStatus = visitMap.get(dateKey) || "Not Seen";
+      const finalMergedStatus = getMergedStatus(
+        update.status,
+        finalVisitStatus
+      );
+
       return {
         date: update.date,
         coverStatus: update.status,
-        visitStatus,
-        mergedStatus: getMergedStatus(update.status, visitStatus),
+        visitStatus: finalVisitStatus,
+        mergedStatus: finalMergedStatus,
       };
     });
 

@@ -47,14 +47,39 @@ export function getSeenStatusDisplay(status: string): StatusDisplay {
 
 /**
  * Get updated status display based on updatedStatus field
+ * When viewing history, mergedStatus should be used if available
  */
 export function getUpdatedStatusDisplay(
   updatedStatus: string,
-  seenStatus: string
+  seenStatus: string,
+  mergedStatus?: string
 ): StatusDisplay {
+  // ALWAYS check mergedStatus first if provided - this is the source of truth from history
+  // mergedStatus takes absolute priority over everything else
+  if (mergedStatus) {
+    switch (mergedStatus) {
+      case "Seen":
+        return STATUS_MAP["Seen"];
+      case "Partial Seen":
+        return STATUS_MAP["Partial"];
+      case "Not Seen":
+      case "Partial Cover":
+        // Both "Not Seen" and "Partial Cover" mean waiting for visit
+        return STATUS_MAP["Not Seen"];
+      case "Not Cover":
+        return NO_COLLECTION_STATUS;
+      default:
+        // Default to "מחכה לביקור" for any unknown mergedStatus
+        return STATUS_MAP["Not Seen"];
+    }
+  }
+
+  // For current data (no mergedStatus), check coverStatus first
   if (updatedStatus === "No") {
     return NO_COLLECTION_STATUS;
   }
+
+  // Fallback to seenStatus for current data
   return getSeenStatusDisplay(seenStatus);
 }
 

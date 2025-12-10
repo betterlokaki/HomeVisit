@@ -41,7 +41,7 @@ def generate_cover_update_history(refresh_time_seconds: int) -> list[dict]:
     while current_time <= now:
         history.append({
             "date": current_time.isoformat(),
-            "status": random.choice(COVER_STATUS_VALUES)
+            "status": "Full"
         })
         current_time += timedelta(seconds=refresh_time_seconds)
     

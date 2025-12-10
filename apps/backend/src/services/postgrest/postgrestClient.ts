@@ -26,7 +26,14 @@ export class PostgRESTClient implements IPostgRESTClient {
 
   async post<T>(path: string, data: any): Promise<{ data: T }> {
     try {
-      const response = await this.client.post(path, data);
+      // Add cache-busting header to prevent stale RPC results
+      const response = await this.client.post(path, data, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
       return { data: response.data };
     } catch (error) {
       logger.error("PostgREST POST failed", { path, error });

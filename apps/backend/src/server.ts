@@ -31,8 +31,8 @@ const authRoutes = (await import("./routes/authRoutes.ts")).default;
 const coverUpdateRoutes = (await import("./routes/coverUpdateRoutes.ts"))
   .default;
 
-// Import enrichment cache scheduler AFTER config is loaded
-const { enrichmentCacheScheduler } = await import(
+// Import schedulers AFTER config is loaded
+const { enrichmentCacheScheduler, historyPreloadScheduler } = await import(
   "./controllers/controllerFactory.ts"
 );
 
@@ -84,6 +84,15 @@ app.listen(PORT, "0.0.0.0", async () => {
   } catch (error) {
     logger.error("⚠️ Failed to start enrichment cache scheduler", error);
     // Don't exit the process, requests will fall back to slow API
+  }
+
+  // Initialize history preload scheduler
+  try {
+    await historyPreloadScheduler.start();
+    logger.info("✅ History preload scheduler started successfully");
+  } catch (error) {
+    logger.error("⚠️ Failed to start history preload scheduler", error);
+    // Don't exit the process, history will be loaded on-demand
   }
 });
 

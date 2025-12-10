@@ -555,8 +555,8 @@ RETURNS TABLE (
   site_name VARCHAR,
   status seen_status,
   recorded_date DATE
-) LANGUAGE sql STABLE AS $$
-  SELECT 
+) LANGUAGE sql VOLATILE AS $$
+  SELECT DISTINCT ON (h.site_id, h.recorded_date)
     h.history_id,
     h.site_id,
     s.site_name,
@@ -567,7 +567,7 @@ RETURNS TABLE (
   JOIN groups g ON s.group_id = g.group_id
   WHERE s.site_name = p_site_name
     AND g.group_name = p_group_name
-  ORDER BY h.recorded_date DESC;
+  ORDER BY h.site_id, h.recorded_date DESC, h.history_id DESC;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_site_history_by_name_and_group(VARCHAR, VARCHAR) TO anon;

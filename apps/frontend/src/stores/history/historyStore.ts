@@ -6,7 +6,7 @@
 import { writable, get } from "svelte/store";
 import dayjs from "dayjs";
 import type { HistoryStoreState } from "./HistoryStoreState";
-import type { MergedHistoryEntry, SeenStatus, MergedStatus, UpdatedStatus } from "@homevisit/common";
+import type { MergedHistoryEntry, SeenStatus } from "@homevisit/common";
 import { buildHistoryMap } from "../../components/calendar/historyMapBuilder";
 import { updateHistoryStatus as apiUpdateHistoryStatus } from "./historyApiClient";
 
@@ -29,12 +29,22 @@ function createHistoryStore() {
      * Set history data for a site
      */
     setSiteHistory: (siteId: number, history: MergedHistoryEntry[]) => {
+      console.log("setSiteHistory called", {
+        siteId,
+        historyLength: history.length,
+      });
       update((state) => {
         const newHistoryData = new Map(state.historyData);
         const historyMap = buildHistoryMap(history);
         newHistoryData.set(siteId, historyMap);
+        console.log("setSiteHistory updating store", {
+          siteId,
+          historyMapSize: historyMap.size,
+          newHistoryDataSize: newHistoryData.size,
+        });
         return { ...state, historyData: newHistoryData };
       });
+      console.log("setSiteHistory completed");
     },
 
     /**
@@ -141,45 +151,82 @@ function createHistoryStore() {
 
     /**
      * Update history status for a site on a specific date
+     * Status is ONLY updated via backend - we always refetch to get the correct merged status
      */
     updateHistoryStatus: async (
       siteId: number,
       siteName: string,
       groupName: string,
       date: string, // YYYY-MM-DD format
-      newStatus: SeenStatus
+      newStatus: SeenStatus,
+      groupId: number // Required groupId for refetching history from backend
     ): Promise<void> => {
+      console.log("updateHistoryStatus called", {
+        siteId,
+        siteName,
+        groupName,
+        date,
+        newStatus,
+        groupId,
+      });
+
       try {
-        // Call API to update history
+        // Call API to update history in backend
+        console.log("Calling apiUpdateHistoryStatus...");
         await apiUpdateHistoryStatus(siteName, groupName, date, newStatus);
+        console.log("apiUpdateHistoryStatus completed successfully");
 
-        // Update local state
-        update((state) => {
-          const newHistoryData = new Map(state.historyData);
-          const siteHistory = newHistoryData.get(siteId);
-          
-          if (siteHistory) {
-            const entry = siteHistory.get(date);
-            if (entry) {
-              // Update the entry with new visit status and recalculate merged status
-              const updatedEntry: MergedHistoryEntry = {
-                ...entry,
-                visitStatus: newStatus,
-                mergedStatus: calculateMergedStatus(entry.coverStatus, newStatus),
-              };
-              const updatedSiteHistory = new Map(siteHistory);
-              updatedSiteHistory.set(date, updatedEntry);
-              newHistoryData.set(siteId, updatedSiteHistory);
-            }
-          }
+        // Always refetch the full history from backend to get the correct merged status
+        // The backend calculates merged status correctly based on coverStatus + visitStatus
+        // Add a small delay to ensure cache invalidation completes
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-          return { ...state, historyData: newHistoryData };
+        console.log("Refetching history from backend with groupId", groupId);
+        const { fetchCoverUpdate } = await import("../visit/visitApiClient");
+        const historyResponse = await fetchCoverUpdate(siteId, groupId);
+
+        if (!historyResponse) {
+          throw new Error(
+            "Failed to refetch history from backend after update. Status may not be accurate."
+          );
+        }
+
+        // Find the entry for the date we just updated
+        const updatedEntry = historyResponse.history.find(
+          (e) => dayjs(e.date).format("YYYY-MM-DD") === date
+        );
+
+        console.log("History refetched successfully from backend", {
+          historyLength: historyResponse.history.length,
+          updatedDate: date,
+          updatedEntry: updatedEntry,
+          entryStatus: updatedEntry?.visitStatus,
+          entryMergedStatus: updatedEntry?.mergedStatus,
+        });
+
+        if (!updatedEntry) {
+          console.warn("Updated entry not found in refetched history", {
+            date,
+            allDates: historyResponse.history.map((e) =>
+              dayjs(e.date).format("YYYY-MM-DD")
+            ),
+          });
+        }
+
+        // Update the entire history for this site with fresh data from backend
+        // This ensures we have the correct merged status calculated by the backend
+        storeAPI.setSiteHistory(siteId, historyResponse.history);
+        console.log("History store updated with backend data", {
+          siteId,
+          historyLength: historyResponse.history.length,
         });
       } catch (error) {
         console.error("Failed to update history status:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to update history";
         update((state) => ({
           ...state,
-          error: error instanceof Error ? error.message : "Failed to update history",
+          error: errorMessage,
         }));
         throw error;
       }
@@ -189,28 +236,7 @@ function createHistoryStore() {
   return storeAPI;
 }
 
-/**
- * Calculate merged status from cover status and visit status
- */
-function calculateMergedStatus(
-  coverStatus: UpdatedStatus,
-  visitStatus: SeenStatus
-): MergedStatus {
-  if (coverStatus === "No") {
-    return "Not Cover";
-  }
-
-  if (coverStatus === "Full") {
-    return visitStatus === "Seen" ? "Seen" : "Not Seen";
-  }
-
-  if (coverStatus === "Partial") {
-    if (visitStatus === "Partial") return "Partial Seen";
-    if (visitStatus === "Not Seen") return "Partial Cover";
-    return "Not Seen";
-  }
-
-  return "Not Cover";
-}
+// Removed calculateMergedStatus - merged status is ONLY calculated by the backend
+// Frontend should never generate statuses, always refetch from backend after updates
 
 export const historyStore = createHistoryStore();

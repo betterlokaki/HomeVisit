@@ -486,8 +486,22 @@
       </div>
     {/if}
 
+    <!-- History Loading State -->
+    {#if $historyStore.loading && !loading}
+      <div
+        class="flex flex-col gap-1 items-center justify-center w-full px-2 py-2.5 mt-2"
+      >
+        <div class="animate-spin">
+          <div
+            class="w-10 h-10 border-4 border-gray-800 border-t-blue-600 rounded-full"
+          />
+        </div>
+        <p class="text-sm text-gray-400">טוען היסטוריה...</p>
+      </div>
+    {/if}
+
     <!-- Visit Cards List -->
-    {#if !loading && filteredCards.length > 0}
+    {#if !loading && !$historyStore.loading && filteredCards.length > 0}
       <div class="flex flex-col gap-2 w-full pt-2 pb-5 px-3">
         {#each filteredCards as card (card.site_id)}
           <VisitCard

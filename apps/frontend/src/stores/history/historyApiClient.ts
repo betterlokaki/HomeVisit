@@ -29,7 +29,14 @@ export async function updateHistoryStatus(
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const errorText = await response.text();
+    console.error("History update API error", {
+      status: response.status,
+      statusText: response.statusText,
+      errorText,
+    });
+    throw new Error(
+      `HTTP error! status: ${response.status}, message: ${errorText}`
+    );
   }
 }
-

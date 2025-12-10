@@ -4,7 +4,15 @@ import type { IGroupService } from "../services/group/interfaces/IGroupService.t
 import type { IEnrichmentService } from "../services/enrichment/interfaces/IEnrichmentService.ts";
 import type { IFilterService } from "../services/filter/interfaces/IFilterService.ts";
 import type { IEnrichmentCacheService } from "../services/enrichmentCache/interfaces/IEnrichmentCacheService.ts";
-import type { FilterRequest, Site, EnrichedSite } from "@homevisit/common";
+import type { ISiteHistoryService } from "../services/siteHistory/interfaces/ISiteHistoryService.ts";
+import type { ICacheService } from "../services/cache/interfaces/ICacheService.ts";
+import type {
+  FilterRequest,
+  Site,
+  EnrichedSite,
+  MergedHistoryResponse,
+  SeenStatus,
+} from "@homevisit/common";
 import {
   sendError,
   sendValidationError,
@@ -22,14 +30,16 @@ export class SitesController {
     private groupService: IGroupService,
     private enrichmentService: IEnrichmentService,
     private filterService: IFilterService,
-    private cacheService: IEnrichmentCacheService
+    private enrichmentCacheService: IEnrichmentCacheService,
+    private coverUpdateCacheService: ICacheService<MergedHistoryResponse>,
+    private siteHistoryService: ISiteHistoryService
   ) {}
 
   private mergeEnrichmentFromCache(
     sites: Site[],
     groupName: string
   ): EnrichedSite[] | null {
-    const cachedData = this.cacheService.get(groupName);
+    const cachedData = this.enrichmentCacheService.get(groupName);
     if (!cachedData) {
       return null;
     }
@@ -136,8 +146,52 @@ export class SitesController {
           `Invalid status. Must be: ${VALID_STATUSES.join(", ")}`
         );
 
+      // Get site to find its group
+      const site = await this.siteService.getSiteByName(siteName);
+      if (!site) return sendNotFound(res, `Site ${siteName}`);
+
+      // Get group to get group name for cache key
+      const group = await this.groupService.getById(site.group_id);
+      if (!group) {
+        logger.warn("Group not found for site", {
+          siteName,
+          groupId: site.group_id,
+        });
+      }
+
+      // Update status
       const updated = await this.siteService.updateStatus(siteName, status);
       if (!updated) return sendNotFound(res, `Site ${siteName}`);
+
+      // Update today's history entry to keep it in sync
+      if (group) {
+        try {
+          await this.siteHistoryService.upsertSiteHistory(
+            site.site_id,
+            status as SeenStatus,
+            new Date() // Today's date
+          );
+          logger.info("Today's history updated for site status change", {
+            siteName,
+            status,
+          });
+        } catch (error) {
+          logger.warn("Failed to update today's history when updating status", {
+            siteName,
+            error,
+          });
+          // Don't fail the request if history update fails
+        }
+
+        // Invalidate cover update cache (history cache) for this site
+        const cacheKey = `${siteName}_${group.group_name}`;
+        this.coverUpdateCacheService.delete(cacheKey);
+        logger.info("Cache invalidated for site status update", {
+          siteName,
+          groupName: group.group_name,
+          cacheKey,
+        });
+      }
 
       logger.info("Site status updated", { siteName, status });
       sendSuccess(res, { message: "Site status updated successfully" });

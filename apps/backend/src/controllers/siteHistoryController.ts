@@ -4,7 +4,8 @@
 import { Request, Response } from "express";
 import type { ISiteHistoryService } from "../services/siteHistory/interfaces/ISiteHistoryService.ts";
 import type { ISiteService } from "../services/site/interfaces/ISiteService.ts";
-import type { SeenStatus } from "@homevisit/common";
+import type { ICacheService } from "../services/cache/interfaces/ICacheService.ts";
+import type { SeenStatus, MergedHistoryResponse } from "@homevisit/common";
 import {
   sendSuccess,
   sendError,
@@ -18,7 +19,8 @@ const VALID_STATUSES = ["Seen", "Partial", "Not Seen"];
 export class SiteHistoryController {
   constructor(
     private siteHistoryService: ISiteHistoryService,
-    private siteService: ISiteService
+    private siteService: ISiteService,
+    private coverUpdateCacheService: ICacheService<MergedHistoryResponse>
   ) {}
 
   async getSiteHistory(req: Request, res: Response): Promise<void> {
@@ -84,18 +86,27 @@ export class SiteHistoryController {
       if (isNaN(parsedDate.getTime()))
         return sendValidationError(res, "Invalid date format. Use YYYY-MM-DD");
 
-      // Update history in database
-      const updated = await this.siteHistoryService.updateSiteHistory(
+      // Get site to find site_id for upsert
+      const site = await this.siteService.getSiteByName(siteName);
+      if (!site) {
+        return sendNotFound(res, `Site ${siteName} not found`);
+      }
+
+      // Use ONLY upsertSiteHistory with site_id - this ensures ONE record per (site_id, recorded_date)
+      // The database function uses ON CONFLICT DO UPDATE, so it will never create duplicates
+      // This is the ONLY place we update history - no fallback, no double calls
+      await this.siteHistoryService.upsertSiteHistory(
+        site.site_id,
+        status as SeenStatus,
+        parsedDate
+      );
+      logger.info("History upserted", {
         siteName,
         groupName,
-        parsedDate,
-        status as SeenStatus
-      );
-      if (!updated)
-        return sendNotFound(
-          res,
-          `History record for site ${siteName} on ${date}`
-        );
+        siteId: site.site_id,
+        date,
+        status,
+      });
 
       // If updating history for today, also update the site's current status
       const today = new Date();
@@ -121,6 +132,23 @@ export class SiteHistoryController {
           // Don't fail the request if site update fails, history was already updated
         }
       }
+
+      // Invalidate cache for this site/group combination
+      // Use the same cache key format as coverUpdateController: siteName_groupName
+      const cacheKey = `${siteName}_${groupName}`;
+      const hadCache = this.coverUpdateCacheService.has(cacheKey);
+
+      // CRITICAL: Clear ALL cache to ensure no stale data
+      // The cache will be rebuilt on next request with fresh data from database
+      this.coverUpdateCacheService.clear();
+
+      logger.info("Cache cleared for site history update", {
+        siteName,
+        groupName,
+        cacheKey,
+        hadCache,
+        allCacheCleared: true,
+      });
 
       logger.info("Site history updated", {
         siteName,

@@ -46,28 +46,30 @@ export function wktToGeoJSON(
 }
 
 /**
- * Get polygon color based on updatedStatus
+ * Get polygon color based on status (updatedStatus or mergedStatus)
  * Returns {strokeColor, fillColor} in hex format and opacity
+ * Supports both coverStatus (No, Full, Partial) and mergedStatus (Seen, Not Seen, Partial Seen, Partial Cover, Not Cover)
  */
-export function getPolygonColor(updatedStatus: string): {
+export function getPolygonColor(status: string): {
   stroke: string;
   fill: string;
   fillOpacity: number;
 } {
-  // Map updatedStatus to colors
+  // Map status to colors
   // Using hex values corresponding to Tailwind colors
   const colorMap: Record<
     string,
     { stroke: string; fill: string; fillOpacity: number }
   > = {
+    // Cover statuses
     No: {
       stroke: "#ef4444", // red-500
       fill: "#ef4444",
       fillOpacity: 0.3,
     },
-    Seen: {
-      stroke: "#4ade80", // green-400
-      fill: "#4ade80",
+    Full: {
+      stroke: "#facc15", // yellow-400
+      fill: "#facc15",
       fillOpacity: 0.3,
     },
     Partial: {
@@ -75,14 +77,35 @@ export function getPolygonColor(updatedStatus: string): {
       fill: "#facc15",
       fillOpacity: 0.3,
     },
-    Full: {
-      stroke: "#facc15", // yellow-400 (same as Partial)
+    // Merged statuses (from history)
+    Seen: {
+      stroke: "#4ade80", // green-400
+      fill: "#4ade80",
+      fillOpacity: 0.3,
+    },
+    "Not Seen": {
+      stroke: "#facc15", // yellow-400
       fill: "#facc15",
+      fillOpacity: 0.3,
+    },
+    "Partial Seen": {
+      stroke: "#fbbf24", // yellow-500 (slightly darker for partial)
+      fill: "#fbbf24",
+      fillOpacity: 0.3,
+    },
+    "Partial Cover": {
+      stroke: "#facc15", // yellow-400
+      fill: "#facc15",
+      fillOpacity: 0.3,
+    },
+    "Not Cover": {
+      stroke: "#ef4444", // red-500
+      fill: "#ef4444",
       fillOpacity: 0.3,
     },
   };
 
-  return colorMap[updatedStatus] || colorMap["Full"];
+  return colorMap[status] || colorMap["Full"];
 }
 
 /**

@@ -59,3 +59,6 @@ export { EnrichmentCacheScheduler } from "./enrichmentCache/enrichmentCacheSched
 // Generic cache service
 export type { ICacheService } from "./cache/interfaces/ICacheService.ts";
 export { GenericCacheService } from "./cache/GenericCacheService.ts";
+
+// History preload scheduler
+export { HistoryPreloadScheduler } from "./historyPreload/historyPreloadScheduler.ts";

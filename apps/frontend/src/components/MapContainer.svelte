@@ -4,6 +4,7 @@
   import "maplibre-gl/dist/maplibre-gl.css";
   import type { VisitCard } from "../stores/visitStore";
   import { visitStore } from "../stores/visitStore";
+  import { historyStore } from "../stores/history";
   import { fetchCoverUpdate } from "../stores/visitApiClient";
   import { MAP_CONFIG } from "../config/mapConfig";
   import {
@@ -11,6 +12,7 @@
     getPolygonColor,
     getConvexHullBounds,
   } from "../utils/mapUtils";
+  import dayjs from "dayjs";
 
   export let selectedSiteId: number | null = null;
 
@@ -19,13 +21,32 @@
   let cards: VisitCard[] = [];
   let mapLoaded = false;
 
+  // Get the current date from history store reactively
+  $: currentDate =
+    $historyStore.selectedDate === null
+      ? dayjs().format("YYYY-MM-DD")
+      : $historyStore.selectedDate;
+
+  // React to currentDate and history data changes to update map colors
+  // This reactive statement will trigger when history store's selectedDate or data changes
+  $: {
+    // Access history store to make this reactive to history data changes
+    void $historyStore.historyData; // Make reactive to history data changes
+    if (map && mapLoaded && cards.length > 0 && currentDate) {
+      console.log("History data or date changed, updating map layers", {
+        currentDate,
+      });
+      updateMapLayers(cards);
+    }
+  }
+
   onMount(() => {
     // Initialize map
     if (!mapContainer) return;
 
     map = new maplibregl.Map({
       container: mapContainer,
-      style: MAP_CONFIG.styleUrl,
+      style: MAP_CONFIG.styleUrl as string | maplibregl.StyleSpecification,
       center: MAP_CONFIG.defaultCenter as [number, number],
       zoom: MAP_CONFIG.defaultZoom,
     });
@@ -44,7 +65,7 @@
     });
 
     // Subscribe to visit store to get cards
-    const unsubscribe = visitStore.subscribe((state) => {
+    const unsubscribeVisit = visitStore.subscribe((state) => {
       cards = state.cards;
       console.log("Cards updated:", cards.length, cards);
       if (map && mapLoaded) {
@@ -57,7 +78,7 @@
     });
 
     return () => {
-      unsubscribe();
+      unsubscribeVisit();
       map?.remove();
     };
   });
@@ -126,9 +147,28 @@
 
         const layerId = `site-${card.site_id}`;
         const sourceId = `site-source-${card.site_id}`;
-        const colors = getPolygonColor(card.updatedStatus);
 
-        console.log("Colors for", card.site_id, ":", colors);
+        // Get history entry for current date to determine color
+        const historyEntry = historyStore.getSiteHistoryEntry(
+          card.site_id,
+          currentDate
+        );
+        const isViewingHistory = currentDate !== dayjs().format("YYYY-MM-DD");
+        // Use history mergedStatus if viewing past date and entry exists, otherwise use current status
+        const statusForColor =
+          isViewingHistory && historyEntry
+            ? historyEntry.mergedStatus
+            : card.updatedStatus;
+        const colors = getPolygonColor(statusForColor);
+
+        console.log(
+          "Colors for",
+          card.site_id,
+          ":",
+          colors,
+          "status:",
+          statusForColor
+        );
         console.log("GeoJSON:", geoJSON);
 
         // Add source
